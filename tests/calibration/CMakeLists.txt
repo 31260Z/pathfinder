@@ -1,0 +1,1 @@
+pathfinder_add_test(test_calibration_drift_coeff test_drift_coeff.cpp)

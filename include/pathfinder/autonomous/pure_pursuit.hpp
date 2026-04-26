@@ -7,6 +7,7 @@
 #include <pathfinder/geometry/angle.hpp>
 #include <pathfinder/geometry/pose2.hpp>
 #include <pathfinder/geometry/vector2.hpp>
+#include <pathfinder/odometry/dead_reckoning.hpp>
 
 #include <cmath>
 #include <cstddef>
@@ -34,10 +35,20 @@ public:
         Pid::Gains            forward{};
         Pid::Gains            heading{};
         ExitConditions::Spec  exit{};
-        double                lookahead_in    = 12.0;
-        double                max_forward_ips = 60.0;
-        double                max_angular_dps = 270.0;
-        bool                  reverse         = false;
+        double                lookahead_in       = 12.0;
+        double                max_forward_ips    = 60.0;
+        double                max_angular_dps    = 270.0;
+        bool                  reverse            = false;
+        // Drift-aware lookahead time (s). The cross-track regulator predicts
+        // path deviation `lookahead_time_sec` ahead using v_y. PurePursuit
+        // doesn't have an explicit cross-track PID — it steers toward the
+        // lookahead point — but we use the body-frame v_y to BIAS the
+        // lookahead point's lateral position (project the bot's v_y forward
+        // by the lookahead horizon, expressed as a perpendicular offset to
+        // the path tangent). See spec §9.
+        double                lookahead_time_sec = 0.10;
+        // Motion-chaining hand-off speed (see MoveToPoint::Options).
+        double                min_exit_speed_ips = 0.0;
     };
 
     PurePursuit(catmull_rom::Path path, Options opts)
@@ -65,7 +76,17 @@ public:
         }
     }
 
+    // Legacy / drift-unaware overload.
     DriveCommand update(Pose2 current_pose, double dt_sec) {
+        return update(current_pose, BodyVelocity{}, dt_sec);
+    }
+
+    // Drift-aware update: see MoveToPoint::update for rationale. PurePursuit
+    // has no separate cross-track PID, so the drift correction shows up as a
+    // lateral bias on the lookahead point: shift the target by the predicted
+    // body-Y offset (`v_y · lookahead_time_sec`), expressed as a world-frame
+    // displacement perpendicular to the bot's heading.
+    DriveCommand update(Pose2 current_pose, BodyVelocity body_vel, double dt_sec) {
         if (done_) {
             return DriveCommand{0.0, 0.0, true};
         }
@@ -103,12 +124,29 @@ public:
                     waypoint_meta_[i].on_arrive();
                 }
             }
+            if (opts_.min_exit_speed_ips > 0.0) {
+                return DriveCommand{last_v_fwd_, last_omega_dps_, true};
+            }
             return DriveCommand{0.0, 0.0, true};
         }
 
         // Lookahead point: clamp to end of path if past it.
         const double s_look = std::min(s_now + opts_.lookahead_in, total_len);
-        const Vector2 lookahead_pt = path_.sample_at_arclength(s_look);
+        Vector2 lookahead_pt = path_.sample_at_arclength(s_look);
+
+        // Drift-aware bias: shift the lookahead point by the predicted
+        // lateral drift (body-Y projected into the world via the bot's
+        // current heading). The sign convention: positive v_y is +body-Y;
+        // its world projection is R(θ)·(0, v_y·t) = v_y·t·(−sinθ, cosθ).
+        // We *subtract* this from the lookahead so the bot steers toward
+        // the negative-drift side, anticipating where it will end up.
+        if (opts_.lookahead_time_sec > 0.0 && std::abs(body_vel.v_y_ips) > 0.0) {
+            const double dy_pred = body_vel.v_y_ips * opts_.lookahead_time_sec;
+            const double s_h     = std::sin(current_pose.heading.rad);
+            const double c_h     = std::cos(current_pose.heading.rad);
+            lookahead_pt.x      -= -s_h * dy_pred;
+            lookahead_pt.y      -=  c_h * dy_pred;
+        }
 
         // Heading toward lookahead.
         const Vector2 to_la = lookahead_pt - current_pose.translation();
@@ -136,12 +174,16 @@ public:
         const double max_w_rad = opts_.max_angular_dps * k_deg_to_rad;
         omega_rad = clamp_sym(omega_rad, max_w_rad);
 
+        last_v_fwd_     = v_fwd;
+        last_omega_dps_ = omega_rad * k_rad_to_deg;
         return DriveCommand{
             v_fwd,
-            omega_rad * k_rad_to_deg,
+            last_omega_dps_,
             false,
         };
     }
+
+    void set_min_exit_speed(double ips) { opts_.min_exit_speed_ips = ips; }
 
     bool   done() const { return done_; }
     double progress_distance_in() const { return progress_s_; }
@@ -188,8 +230,10 @@ private:
     std::vector<Waypoint>                  waypoint_meta_{};
     std::vector<std::optional<double>>     waypoint_speed_caps_{};
     std::vector<bool>                      waypoint_callbacks_fired_{};
-    double                                 progress_s_ = 0.0;
-    bool                                   done_       = false;
+    double                                 progress_s_     = 0.0;
+    double                                 last_v_fwd_     = 0.0;
+    double                                 last_omega_dps_ = 0.0;
+    bool                                   done_           = false;
     Pid                                    forward_pid_;
     Pid                                    heading_pid_;
     ExitConditions                         exit_;

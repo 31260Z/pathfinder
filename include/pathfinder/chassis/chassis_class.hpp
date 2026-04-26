@@ -64,7 +64,7 @@ public:
           bot_(std::move(bot)),
           sensors_(std::move(sensors)),
           drive_(drive_config),
-          odom_(make_dr_config(bot_, sensors_)) {
+          odom_(make_dr_config(bot_, sensors_, drive_)) {
         warn_unimplemented_tier(localization);
         seed_sensor_state();
     }
@@ -108,13 +108,15 @@ public:
     void moveTo(Vector2 target, MoveOpts opts = {}) {
         guard_async(opts.async);
         MoveToPoint::Options o{};
-        o.along_track     = opts.along_track.value_or(lateral_.feedback);
-        o.cross_track     = opts.cross_track.value_or(lateral_.feedback);
-        o.heading         = opts.heading.value_or(angular_.feedback);
-        o.exit            = opts.exit.value_or(default_move_exit());
-        o.max_forward_ips = drive_.max_forward_ips;
-        o.max_angular_dps = drive_.max_angular_dps;
-        o.reverse         = opts.reverse;
+        o.along_track        = opts.along_track.value_or(lateral_.feedback);
+        o.cross_track        = opts.cross_track.value_or(lateral_.feedback);
+        o.heading            = opts.heading.value_or(angular_.feedback);
+        o.exit               = opts.exit.value_or(default_move_exit());
+        o.max_forward_ips    = drive_.max_forward_ips;
+        o.max_angular_dps    = drive_.max_angular_dps;
+        o.reverse            = opts.reverse;
+        o.lookahead_time_sec = opts.lookahead_time_sec;
+        o.min_exit_speed_ips = opts.min_exit_speed_ips;
 
         MoveToPoint ctrl(odom_.pose(), target, o);
         run_until_done(ctrl, opts.timeout_ms);
@@ -123,14 +125,16 @@ public:
     void moveToPose(Pose2 target, MoveOpts opts = {}) {
         guard_async(opts.async);
         Boomerang::Options o{};
-        o.along_track     = opts.along_track.value_or(lateral_.feedback);
-        o.cross_track     = opts.cross_track.value_or(lateral_.feedback);
-        o.heading         = opts.heading.value_or(angular_.feedback);
-        o.exit            = opts.exit.value_or(default_move_exit());
-        o.max_forward_ips = drive_.max_forward_ips;
-        o.max_angular_dps = drive_.max_angular_dps;
-        o.lead            = opts.lead;
-        o.reverse         = opts.reverse;
+        o.along_track        = opts.along_track.value_or(lateral_.feedback);
+        o.cross_track        = opts.cross_track.value_or(lateral_.feedback);
+        o.heading            = opts.heading.value_or(angular_.feedback);
+        o.exit               = opts.exit.value_or(default_move_exit());
+        o.max_forward_ips    = drive_.max_forward_ips;
+        o.max_angular_dps    = drive_.max_angular_dps;
+        o.lead               = opts.lead;
+        o.reverse            = opts.reverse;
+        o.lookahead_time_sec = opts.lookahead_time_sec;
+        o.min_exit_speed_ips = opts.min_exit_speed_ips;
 
         Boomerang ctrl(odom_.pose(), target, o);
         run_until_done(ctrl, opts.timeout_ms);
@@ -193,13 +197,15 @@ public:
         }
         catmull_rom::Path path(std::move(waypoints), opts.path_tension);
         PurePursuit::Options o{};
-        o.forward         = opts.forward.value_or(lateral_.feedback);
-        o.heading         = opts.heading.value_or(angular_.feedback);
-        o.exit            = opts.exit.value_or(default_follow_exit());
-        o.lookahead_in    = opts.lookahead_in;
-        o.max_forward_ips = drive_.max_forward_ips;
-        o.max_angular_dps = drive_.max_angular_dps;
-        o.reverse         = opts.reverse;
+        o.forward            = opts.forward.value_or(lateral_.feedback);
+        o.heading            = opts.heading.value_or(angular_.feedback);
+        o.exit               = opts.exit.value_or(default_follow_exit());
+        o.lookahead_in       = opts.lookahead_in;
+        o.max_forward_ips    = drive_.max_forward_ips;
+        o.max_angular_dps    = drive_.max_angular_dps;
+        o.reverse            = opts.reverse;
+        o.lookahead_time_sec = opts.lookahead_time_sec;
+        o.min_exit_speed_ips = opts.min_exit_speed_ips;
 
         PurePursuit ctrl(std::move(path), o);
         run_until_done(ctrl, opts.timeout_ms);
@@ -216,13 +222,15 @@ public:
 
         catmull_rom::Path path(std::move(pts), opts.path_tension);
         PurePursuit::Options o{};
-        o.forward         = opts.forward.value_or(lateral_.feedback);
-        o.heading         = opts.heading.value_or(angular_.feedback);
-        o.exit            = opts.exit.value_or(default_follow_exit());
-        o.lookahead_in    = opts.lookahead_in;
-        o.max_forward_ips = drive_.max_forward_ips;
-        o.max_angular_dps = drive_.max_angular_dps;
-        o.reverse         = opts.reverse;
+        o.forward            = opts.forward.value_or(lateral_.feedback);
+        o.heading            = opts.heading.value_or(angular_.feedback);
+        o.exit               = opts.exit.value_or(default_follow_exit());
+        o.lookahead_in       = opts.lookahead_in;
+        o.max_forward_ips    = drive_.max_forward_ips;
+        o.max_angular_dps    = drive_.max_angular_dps;
+        o.reverse            = opts.reverse;
+        o.lookahead_time_sec = opts.lookahead_time_sec;
+        o.min_exit_speed_ips = opts.min_exit_speed_ips;
 
         PurePursuit ctrl(std::move(path), o, std::move(waypoints));
         run_until_done(ctrl, opts.timeout_ms);
@@ -245,6 +253,14 @@ public:
         write_per_side_voltage(0.0, 0.0);
     }
 
+    // Direct per-side voltage write (mV, ±12000). Bypasses any active
+    // controller — intended for calibration utilities (DriftCoeff, AutoPid,
+    // WheelFinder) that need to drive the motors with a known open-loop
+    // signal. NOT for general user code; that's what `opcontrol(...)` is for.
+    void applyVoltage(double left_mv, double right_mv) {
+        write_per_side_voltage(left_mv, right_mv);
+    }
+
     // ── Driver control (sync — see brief §"Driver-control modes") ─────
     // Each opcontrol mode calls a user-supplied stick poll on every tick.
     // The two-arg overload takes a polling functor `(Axis) -> double in
@@ -258,7 +274,7 @@ public:
             const double r = apply_curve(poll(mode.right_axis), mode.expo_curve, mode.deadband);
             const double l_ips = l * drive_.max_forward_ips;
             const double r_ips = r * drive_.max_forward_ips;
-            tick_odometry();
+            tick_odometry(dt);
             write_per_side_voltage(drive_.ips_to_voltage_mv(l_ips),
                                    drive_.ips_to_voltage_mv(r_ips));
             host_sleep_for_ms(static_cast<int>(dt * 1000.0));
@@ -274,7 +290,7 @@ public:
             const double t = apply_curve(poll(mode.turn_axis),    mode.expo_curve, mode.deadband);
             const double f_ips = f * drive_.max_forward_ips;
             const double t_ips = t * drive_.max_forward_ips;   // turn maps as differential ips
-            tick_odometry();
+            tick_odometry(dt);
             write_per_side_voltage(drive_.ips_to_voltage_mv(f_ips + t_ips),
                                    drive_.ips_to_voltage_mv(f_ips - t_ips));
             host_sleep_for_ms(static_cast<int>(dt * 1000.0));
@@ -293,7 +309,7 @@ public:
             // bot still allows a quick-turn fall-through (cv used directly).
             const double scale    = std::abs(th);
             const double curve_v  = (scale > 0.05) ? (cv * th_ips) : (cv * drive_.max_forward_ips);
-            tick_odometry();
+            tick_odometry(dt);
             write_per_side_voltage(drive_.ips_to_voltage_mv(th_ips + curve_v),
                                    drive_.ips_to_voltage_mv(th_ips - curve_v));
             host_sleep_for_ms(static_cast<int>(dt * 1000.0));
@@ -336,8 +352,8 @@ public:
         bool         done = true;
     };
 
-    TickResult tick(double /*dt_sec*/) {
-        tick_odometry();
+    TickResult tick(double dt_sec) {
+        tick_odometry(dt_sec);
         return TickResult{odom_.pose(), DriveCommand{}, true};
     }
 
@@ -351,6 +367,13 @@ public:
     const Sensors& sensors() const { return sensors_; }
     const Drive&   drive()   const { return drive_; }
 
+    // 6-DOF body-frame velocity (Wave D). Tracks v_x, v_y, ω in body-frame
+    // ips/dps; v_y comes either from a perp tracking wheel (direct) or from
+    // the spec §8 friction-decay + cross-coupling model when no perp wheel
+    // is installed. Used by drift-aware controllers and by the DriftCoeff
+    // calibration utility.
+    BodyVelocity getBodyVelocity() const { return odom_.body_velocity(); }
+
     // Per-side last-commanded voltage for tests that don't want to reach
     // through the underlying FakeMotors.
     double last_left_voltage_mv()  const { return last_left_mv_; }
@@ -363,7 +386,7 @@ private:
         prev_perp_pos_revs_ = read_first_perpendicular_position_revs();
     }
 
-    void tick_odometry() {
+    void tick_odometry(double dt_sec) {
         // Parallel-wheel inches: take the FIRST parallel wheel for v1.
         // Multi-wheel averaging is a future tweak (per the brief).
         // Note: parallel_wheels() returns by value; bind to a local before
@@ -404,7 +427,7 @@ private:
             if (count > 0) heading = Angle{std::atan2(s_sum, c_sum)};
         }
 
-        odom_.update(par_in, perp_in, heading);
+        odom_.update(par_in, perp_in, heading, dt_sec);
     }
 
     double read_first_parallel_position_revs() const {
@@ -422,18 +445,48 @@ private:
     }
 
     // ── Motion-loop core ───────────────────────────────────────────────
+    // Drift-aware: passes the latest BodyVelocity through to the controller
+    // on each tick. Controllers that don't need it (TurnTo, TurnToPoint)
+    // ignore it via SFINAE-free overload selection (see detector below).
     template <typename Controller>
     void run_until_done(Controller& ctrl, double timeout_ms) {
         constexpr double dt_sec = 0.010;
         const auto       start  = std::chrono::steady_clock::now();
         while (!ctrl.done()) {
-            tick_odometry();
-            const DriveCommand cmd = ctrl.update(odom_.pose(), dt_sec);
+            tick_odometry(dt_sec);
+            const DriveCommand cmd = call_controller_update(
+                ctrl, odom_.pose(), odom_.body_velocity(), dt_sec);
             apply_drive_command(cmd);
             if (elapsed_ms_since(start) > timeout_ms) break;
             host_sleep_for_ms(static_cast<int>(dt_sec * 1000.0));
         }
         write_per_side_voltage(0.0, 0.0);
+    }
+
+    // Dispatcher: prefer the (Pose2, BodyVelocity, dt) overload when the
+    // controller exposes it; fall back to (Pose2, dt) otherwise. TurnTo /
+    // TurnToPoint are heading-only so they only declare the legacy overload.
+    // Tag-dispatch: the high-priority overload takes the more-derived tag so
+    // it wins exact-match resolution when both candidates are viable.
+    struct prio_legacy_tag {};
+    struct prio_velocity_tag : prio_legacy_tag {};
+
+    template <typename Controller>
+    static auto try_velocity_update(Controller& ctrl, Pose2 pose, BodyVelocity vel, double dt,
+                                    prio_velocity_tag)
+        -> decltype(ctrl.update(pose, vel, dt)) {
+        return ctrl.update(pose, vel, dt);
+    }
+    template <typename Controller>
+    static auto try_velocity_update(Controller& ctrl, Pose2 pose, BodyVelocity, double dt,
+                                    prio_legacy_tag)
+        -> decltype(ctrl.update(pose, dt)) {
+        return ctrl.update(pose, dt);
+    }
+    template <typename Controller>
+    static DriveCommand call_controller_update(Controller& ctrl, Pose2 pose,
+                                               BodyVelocity vel, double dt) {
+        return try_velocity_update(ctrl, pose, vel, dt, prio_velocity_tag{});
     }
 
     void apply_drive_command(DriveCommand cmd) {
@@ -509,7 +562,8 @@ private:
         return std::chrono::duration<double, std::milli>(now - t0).count();
     }
 
-    static DeadReckoning::Config make_dr_config(const Bot& bot, const Sensors& sensors) {
+    static DeadReckoning::Config make_dr_config(const Bot& bot, const Sensors& sensors,
+                                                const Drive& drive) {
         DeadReckoning::Config cfg{};
         if (!sensors.parallel_wheels().empty()) {
             const Vector2 c = corner_to_center_offset(
@@ -522,6 +576,7 @@ private:
             cfg.perp_wheel_x_offset_in = c.x;
             cfg.has_perp_wheel         = true;
         }
+        cfg.lateral_friction_coefficient = drive.lateral_friction_coefficient;
         return cfg;
     }
 

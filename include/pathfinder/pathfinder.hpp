@@ -6,6 +6,7 @@
 // sensors.hpp>) directly for slightly better build times.
 
 #include <pathfinder/autonomous/autonomous.hpp>
+#include <pathfinder/calibration/calibration.hpp>
 #include <pathfinder/chassis/chassis.hpp>
 #include <pathfinder/controllers/controllers.hpp>
 #include <pathfinder/driving/driving.hpp>

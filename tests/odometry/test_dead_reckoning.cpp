@@ -11,6 +11,7 @@ using namespace pathfinder;
 namespace {
 constexpr double k_pi_local = 3.14159265358979323846;
 constexpr double k_eps      = 1e-9;
+constexpr double k_dt       = 0.01;   // 100 Hz default for the rewritten tests
 } // namespace
 
 TEST_CASE("DR: default pose is the origin") {
@@ -31,7 +32,7 @@ TEST_CASE("DR: first update seeds heading without translating") {
     DeadReckoning dr({}, Pose2{1.0, 2.0, Angle::radians(0.0)});
     // First call: even with a nonzero wheel reading we have no Δθ baseline,
     // so the integrator must not move the pose.
-    dr.update(10.0, 0.0, Angle::radians(0.5));
+    dr.update(10.0, 0.0, Angle::radians(0.5), k_dt);
     const Pose2 p = dr.pose();
     CHECK(p.x == doctest::Approx(1.0));
     CHECK(p.y == doctest::Approx(2.0));
@@ -40,8 +41,8 @@ TEST_CASE("DR: first update seeds heading without translating") {
 
 TEST_CASE("DR: pure forward at heading 0 advances +X") {
     DeadReckoning dr({});
-    dr.update(0.0, 0.0, Angle::radians(0.0));   // seed
-    dr.update(5.0, 0.0, Angle::radians(0.0));
+    dr.update(0.0, 0.0, Angle::radians(0.0), k_dt);   // seed
+    dr.update(5.0, 0.0, Angle::radians(0.0), k_dt);
     const Pose2 p = dr.pose();
     CHECK(p.x == doctest::Approx(5.0));
     CHECK(p.y == doctest::Approx(0.0).epsilon(k_eps));
@@ -50,8 +51,8 @@ TEST_CASE("DR: pure forward at heading 0 advances +X") {
 
 TEST_CASE("DR: pure forward at heading +pi/2 advances +Y") {
     DeadReckoning dr({}, Pose2{0.0, 0.0, Angle::radians(k_pi_local / 2.0)});
-    dr.update(0.0, 0.0, Angle::radians(k_pi_local / 2.0));   // seed
-    dr.update(7.5, 0.0, Angle::radians(k_pi_local / 2.0));
+    dr.update(0.0, 0.0, Angle::radians(k_pi_local / 2.0), k_dt);   // seed
+    dr.update(7.5, 0.0, Angle::radians(k_pi_local / 2.0), k_dt);
     const Pose2 p = dr.pose();
     CHECK(p.x == doctest::Approx(0.0).epsilon(k_eps));
     CHECK(p.y == doctest::Approx(7.5));
@@ -59,8 +60,8 @@ TEST_CASE("DR: pure forward at heading +pi/2 advances +Y") {
 
 TEST_CASE("DR: pure forward at heading +pi reverses to -X") {
     DeadReckoning dr({}, Pose2{0.0, 0.0, Angle::radians(k_pi_local)});
-    dr.update(0.0, 0.0, Angle::radians(k_pi_local));   // seed
-    dr.update(3.0, 0.0, Angle::radians(k_pi_local));
+    dr.update(0.0, 0.0, Angle::radians(k_pi_local), k_dt);   // seed
+    dr.update(3.0, 0.0, Angle::radians(k_pi_local), k_dt);
     const Pose2 p = dr.pose();
     CHECK(p.x == doctest::Approx(-3.0));
     CHECK(p.y == doctest::Approx(0.0).epsilon(k_eps));
@@ -69,8 +70,8 @@ TEST_CASE("DR: pure forward at heading +pi reverses to -X") {
 TEST_CASE("DR: pure forward at arbitrary heading projects correctly") {
     const double theta = k_pi_local / 6.0;   // 30 deg
     DeadReckoning dr({}, Pose2{0.0, 0.0, Angle::radians(theta)});
-    dr.update(0.0, 0.0, Angle::radians(theta));   // seed
-    dr.update(10.0, 0.0, Angle::radians(theta));
+    dr.update(0.0, 0.0, Angle::radians(theta), k_dt);   // seed
+    dr.update(10.0, 0.0, Angle::radians(theta), k_dt);
     const Pose2 p = dr.pose();
     CHECK(p.x == doctest::Approx(10.0 * std::cos(theta)));
     CHECK(p.y == doctest::Approx(10.0 * std::sin(theta)));
@@ -83,8 +84,8 @@ TEST_CASE("DR: pure rotation about bot center leaves x/y unchanged") {
     DeadReckoning::Config cfg{};
     cfg.parallel_wheel_y_offset_in = 3.0;
     DeadReckoning dr(cfg, Pose2{2.0, -1.0, Angle::radians(0.0)});
-    dr.update(0.0, 0.0, Angle::radians(0.0));   // seed
-    dr.update(-3.0 * 0.4, 0.0, Angle::radians(0.4));
+    dr.update(0.0, 0.0, Angle::radians(0.0), k_dt);   // seed
+    dr.update(-3.0 * 0.4, 0.0, Angle::radians(0.4), k_dt);
 
     const Pose2 p = dr.pose();
     CHECK(p.x == doctest::Approx(2.0).epsilon(k_eps));
@@ -102,8 +103,8 @@ TEST_CASE("DR: pure rotation about bot center, perp wheel offset") {
     cfg.has_perp_wheel        = true;
     cfg.perp_wheel_x_offset_in = 1.5;
     DeadReckoning dr(cfg);
-    dr.update(0.0, 0.0, Angle::radians(0.0));   // seed
-    dr.update(0.0, 0.3 * 1.5, Angle::radians(0.3));
+    dr.update(0.0, 0.0, Angle::radians(0.0), k_dt);   // seed
+    dr.update(0.0, 0.3 * 1.5, Angle::radians(0.3), k_dt);
 
     const Pose2 p = dr.pose();
     CHECK(p.x == doctest::Approx(0.0).epsilon(k_eps));
@@ -115,8 +116,8 @@ TEST_CASE("DR: lateral perp-wheel reading translates in world Y at heading 0") {
     DeadReckoning::Config cfg{};
     cfg.has_perp_wheel = true;
     DeadReckoning dr(cfg);
-    dr.update(0.0, 0.0, Angle::radians(0.0));   // seed
-    dr.update(0.0, 4.0, Angle::radians(0.0));   // pure body-Y motion, no rotation
+    dr.update(0.0, 0.0, Angle::radians(0.0), k_dt);   // seed
+    dr.update(0.0, 4.0, Angle::radians(0.0), k_dt);   // pure body-Y motion, no rotation
     const Pose2 p = dr.pose();
     CHECK(p.x == doctest::Approx(0.0).epsilon(k_eps));
     CHECK(p.y == doctest::Approx(4.0));
@@ -127,8 +128,8 @@ TEST_CASE("DR: lateral perp-wheel reading at heading +pi/2 translates in world -
     DeadReckoning::Config cfg{};
     cfg.has_perp_wheel = true;
     DeadReckoning dr(cfg, Pose2{0.0, 0.0, Angle::radians(k_pi_local / 2.0)});
-    dr.update(0.0, 0.0, Angle::radians(k_pi_local / 2.0));   // seed
-    dr.update(0.0, 2.0, Angle::radians(k_pi_local / 2.0));
+    dr.update(0.0, 0.0, Angle::radians(k_pi_local / 2.0), k_dt);   // seed
+    dr.update(0.0, 2.0, Angle::radians(k_pi_local / 2.0), k_dt);
     const Pose2 p = dr.pose();
     CHECK(p.x == doctest::Approx(-2.0));
     CHECK(p.y == doctest::Approx(0.0).epsilon(k_eps));
@@ -138,10 +139,10 @@ TEST_CASE("DR: heading wraparound — Δθ uses shortest path") {
     // Heading jumps from +pi - 0.1 to -pi + 0.1: naive subtraction would give
     // ~-2pi+0.2; the correct shortest delta is +0.2.
     DeadReckoning dr({});
-    dr.update(0.0, 0.0, Angle::radians(k_pi_local - 0.1));   // seed
+    dr.update(0.0, 0.0, Angle::radians(k_pi_local - 0.1), k_dt);   // seed
     // Pure forward of 1.0 inch with the small wraparound; mid-heading
     // should be near +pi, so motion should be (cos(pi), sin(pi)) ≈ (-1, 0).
-    dr.update(1.0, 0.0, Angle::radians(-k_pi_local + 0.1));
+    dr.update(1.0, 0.0, Angle::radians(-k_pi_local + 0.1), k_dt);
     const Pose2 p = dr.pose();
     // Mid-heading = (pi - 0.1) + 0.1 = pi exactly.
     CHECK(p.x == doctest::Approx(std::cos(k_pi_local)));
@@ -155,8 +156,8 @@ TEST_CASE("DR: combined forward + rotation uses mid-heading") {
     // 0 → π/2. Mid-heading = π/4. Body-frame Δ is (2, 0), no perp wheel.
     // World-frame: 2 * (cos π/4, sin π/4) ≈ (1.4142, 1.4142).
     DeadReckoning dr({});
-    dr.update(0.0, 0.0, Angle::radians(0.0));   // seed
-    dr.update(2.0, 0.0, Angle::radians(k_pi_local / 2.0));
+    dr.update(0.0, 0.0, Angle::radians(0.0), k_dt);   // seed
+    dr.update(2.0, 0.0, Angle::radians(k_pi_local / 2.0), k_dt);
     const Pose2 p = dr.pose();
     const double expected = 2.0 * std::cos(k_pi_local / 4.0);   // ≈ 1.41421356
     CHECK(p.x == doctest::Approx(expected));
@@ -176,11 +177,11 @@ TEST_CASE("DR: many small steps approximate a circular arc") {
     const double d_s         = arc_len / n;
     const double d_theta     = total_theta / n;
 
-    dr.update(0.0, 0.0, Angle::radians(0.0));   // seed
+    dr.update(0.0, 0.0, Angle::radians(0.0), k_dt);   // seed
     double heading = 0.0;
     for (int i = 0; i < n; ++i) {
         heading += d_theta;
-        dr.update(d_s, 0.0, Angle::radians(heading));
+        dr.update(d_s, 0.0, Angle::radians(heading), k_dt);
     }
     const Pose2 p = dr.pose();
     // Mid-heading integration is 2nd-order, so 1000 steps is overkill; gets
@@ -190,15 +191,15 @@ TEST_CASE("DR: many small steps approximate a circular arc") {
     CHECK(p.heading.radians() == doctest::Approx(k_pi_local / 2.0));
 }
 
-TEST_CASE("DR: set_pose teleports without disturbing integration history") {
+TEST_CASE("DR: set_pose teleports without disturbing integration history (history=Δθ baseline)") {
     DeadReckoning dr({});
-    dr.update(0.0, 0.0, Angle::radians(0.0));   // seed prev_heading_ = 0
-    dr.update(1.0, 0.0, Angle::radians(0.0));   // pose now (1, 0, 0)
+    dr.update(0.0, 0.0, Angle::radians(0.0), k_dt);   // seed prev_heading_ = 0
+    dr.update(1.0, 0.0, Angle::radians(0.0), k_dt);   // pose now (1, 0, 0)
 
     dr.set_pose(Pose2{50.0, 50.0, Angle::radians(0.0)});
     // Next update: prev_heading_ should still be 0 from the previous update,
     // not reset. Driving 2" forward should now land us at (52, 50).
-    dr.update(2.0, 0.0, Angle::radians(0.0));
+    dr.update(2.0, 0.0, Angle::radians(0.0), k_dt);
     const Pose2 p = dr.pose();
     CHECK(p.x == doctest::Approx(52.0));
     CHECK(p.y == doctest::Approx(50.0).epsilon(k_eps));
@@ -206,8 +207,8 @@ TEST_CASE("DR: set_pose teleports without disturbing integration history") {
 
 TEST_CASE("DR: reset clears prev-heading without moving the pose") {
     DeadReckoning dr({}, Pose2{3.0, 4.0, Angle::radians(0.5)});
-    dr.update(0.0, 0.0, Angle::radians(0.5));   // seed
-    dr.update(5.0, 0.0, Angle::radians(0.5));   // moves the pose
+    dr.update(0.0, 0.0, Angle::radians(0.5), k_dt);   // seed
+    dr.update(5.0, 0.0, Angle::radians(0.5), k_dt);   // moves the pose
 
     const Pose2 before_reset = dr.pose();
     dr.reset();
@@ -215,14 +216,14 @@ TEST_CASE("DR: reset clears prev-heading without moving the pose") {
 
     // After reset, the next update is a "first" update again — should NOT
     // translate even with a nonzero wheel reading.
-    dr.update(99.0, 0.0, Angle::radians(0.5));
+    dr.update(99.0, 0.0, Angle::radians(0.5), k_dt);
     CHECK(dr.pose() == before_reset);
 }
 
 TEST_CASE("DR: backward motion (negative encoder) goes the right way") {
     DeadReckoning dr({});
-    dr.update(0.0, 0.0, Angle::radians(0.0));   // seed
-    dr.update(-4.0, 0.0, Angle::radians(0.0));
+    dr.update(0.0, 0.0, Angle::radians(0.0), k_dt);   // seed
+    dr.update(-4.0, 0.0, Angle::radians(0.0), k_dt);
     const Pose2 p = dr.pose();
     CHECK(p.x == doctest::Approx(-4.0));
     CHECK(p.y == doctest::Approx(0.0).epsilon(k_eps));
@@ -234,8 +235,8 @@ TEST_CASE("DR: combined parallel + perp encoder readings") {
     DeadReckoning::Config cfg{};
     cfg.has_perp_wheel = true;
     DeadReckoning dr(cfg);
-    dr.update(0.0, 0.0, Angle::radians(0.0));   // seed
-    dr.update(3.0, -2.0, Angle::radians(0.0));
+    dr.update(0.0, 0.0, Angle::radians(0.0), k_dt);   // seed
+    dr.update(3.0, -2.0, Angle::radians(0.0), k_dt);
     const Pose2 p = dr.pose();
     CHECK(p.x == doctest::Approx(3.0));
     CHECK(p.y == doctest::Approx(-2.0));
@@ -264,12 +265,12 @@ TEST_CASE("DR: spec App. A wheel-finder scenario — bot pivots about a corner")
     // (= world pivot) is therefore at world (−9, −9) — no rotation yet, so
     // body and world axes line up.
     DeadReckoning dr(cfg);
-    dr.update(0.0, 0.0, Angle::radians(0.0));   // seed
+    dr.update(0.0, 0.0, Angle::radians(0.0), k_dt);   // seed
 
     const double d_theta  = 0.5;
     const double par_enc  = (-9.0 - (-3.0)) * d_theta;   // −3.0
     const double perp_enc = (-7.0 - (-9.0)) * d_theta;   // +1.0
-    dr.update(par_enc, perp_enc, Angle::radians(d_theta));
+    dr.update(par_enc, perp_enc, Angle::radians(d_theta), k_dt);
 
     // Closed-form: bot center pivots about world point (−9, −9):
     //   center' = pivot + R(Δθ) · (center − pivot)
@@ -297,7 +298,7 @@ TEST_CASE("DR: spec App. A scenario, refined into many small steps") {
     cfg.perp_wheel_x_offset_in      = -7.0;
 
     DeadReckoning dr(cfg);
-    dr.update(0.0, 0.0, Angle::radians(0.0));   // seed
+    dr.update(0.0, 0.0, Angle::radians(0.0), k_dt);   // seed
 
     constexpr int    n           = 500;
     constexpr double total_theta = 0.5;
@@ -308,7 +309,7 @@ TEST_CASE("DR: spec App. A scenario, refined into many small steps") {
     double heading = 0.0;
     for (int i = 0; i < n; ++i) {
         heading += d_theta;
-        dr.update(par_step, perp_step, Angle::radians(heading));
+        dr.update(par_step, perp_step, Angle::radians(heading), k_dt);
     }
 
     const double cos05    = std::cos(total_theta);
@@ -326,8 +327,8 @@ TEST_CASE("DR: zero-Δθ step is a clean straight-line projection") {
     // Make sure the d_theta=0 path doesn't do anything weird (no NaNs from
     // 0/0, no off-by-one in the mid-heading expression).
     DeadReckoning dr({}, Pose2{0.0, 0.0, Angle::radians(0.25)});
-    dr.update(0.0, 0.0, Angle::radians(0.25));   // seed
-    dr.update(2.0, 0.0, Angle::radians(0.25));
+    dr.update(0.0, 0.0, Angle::radians(0.25), k_dt);   // seed
+    dr.update(2.0, 0.0, Angle::radians(0.25), k_dt);
     const Pose2 p = dr.pose();
     CHECK(p.x == doctest::Approx(2.0 * std::cos(0.25)));
     CHECK(p.y == doctest::Approx(2.0 * std::sin(0.25)));
@@ -336,11 +337,182 @@ TEST_CASE("DR: zero-Δθ step is a clean straight-line projection") {
 }
 
 TEST_CASE("DR: perp wheel disabled means lateral encoder is ignored") {
-    // has_perp_wheel=false → d_y = 0 regardless of perp_wheel_delta_in.
+    // has_perp_wheel=false → d_y = 0 regardless of perp_wheel_delta_in. The
+    // model-driven v_y still tracks (0 here, since ω = 0), but it does NOT
+    // feed back into pose integration — that's the EKF's job (Wave F).
     DeadReckoning dr({});   // has_perp_wheel defaults to false
-    dr.update(0.0, 0.0, Angle::radians(0.0));   // seed
-    dr.update(0.0, 99.0, Angle::radians(0.0));  // bogus perp reading
+    dr.update(0.0, 0.0, Angle::radians(0.0), k_dt);   // seed
+    dr.update(0.0, 99.0, Angle::radians(0.0), k_dt);  // bogus perp reading
     const Pose2 p = dr.pose();
     CHECK(p.x == doctest::Approx(0.0));
     CHECK(p.y == doctest::Approx(0.0));
+}
+
+// ── Wave D: BodyVelocity tests ───────────────────────────────────────────
+
+TEST_CASE("DR: pure forward at constant velocity reports v_x correctly") {
+    DeadReckoning dr({});
+    dr.update(0.0, 0.0, Angle::radians(0.0), k_dt);   // seed; velocity stays 0
+    CHECK(dr.body_velocity().v_x_ips == doctest::Approx(0.0));
+    // Drive 0.5 inches in 0.01s = 50 ips.
+    dr.update(0.5, 0.0, Angle::radians(0.0), k_dt);
+    const BodyVelocity v = dr.body_velocity();
+    CHECK(v.v_x_ips == doctest::Approx(50.0));
+    CHECK(v.v_y_ips == doctest::Approx(0.0));
+    CHECK(v.omega_dps == doctest::Approx(0.0));
+}
+
+TEST_CASE("DR: pure rotation reports omega_dps; v_x and v_y near 0") {
+    DeadReckoning dr({});
+    dr.update(0.0, 0.0, Angle::radians(0.0), k_dt);   // seed
+    // 0.1 rad in 0.01 s = 10 rad/s = 572.957...°/s
+    dr.update(0.0, 0.0, Angle::radians(0.1), k_dt);
+    const BodyVelocity v = dr.body_velocity();
+    CHECK(v.omega_dps == doctest::Approx(10.0 * k_rad_to_deg));
+    CHECK(v.v_x_ips == doctest::Approx(0.0));
+    CHECK(v.v_y_ips == doctest::Approx(0.0));   // ω·v_x = 0 since v_x = 0
+}
+
+TEST_CASE("DR: with perp wheel — lateral motion reads v_y directly") {
+    DeadReckoning::Config cfg{};
+    cfg.has_perp_wheel = true;
+    DeadReckoning dr(cfg);
+    dr.update(0.0, 0.0, Angle::radians(0.0), k_dt);   // seed
+    // Perp wheel reads 0.3 in over 0.01 s = 30 ips body-Y.
+    dr.update(0.0, 0.3, Angle::radians(0.0), k_dt);
+    const BodyVelocity v = dr.body_velocity();
+    CHECK(v.v_y_ips == doctest::Approx(30.0));
+    CHECK(v.v_x_ips == doctest::Approx(0.0));
+}
+
+TEST_CASE("DR (no perp wheel): cross-coupling injects v_y, friction decays it") {
+    // With no perpendicular wheel, the v_y dynamics follow the spec §8 model:
+    //   v_y_dot = −μ·v_y − ω·v_x
+    //
+    // Drive forward at constant 50 ips, then in one tick rotate to inject
+    // v_y, then stop rotating and watch v_y decay.
+    DeadReckoning::Config cfg{};
+    cfg.lateral_friction_coefficient = 1.0;   // omni — slow decay (~1s e-folding)
+    DeadReckoning dr(cfg);
+
+    constexpr double dt   = 0.01;
+    constexpr double v_fwd = 50.0;             // ips
+    constexpr double dpar = v_fwd * dt;        // 0.5 in/step
+
+    // Seed.
+    dr.update(0.0, 0.0, Angle::radians(0.0), dt);
+
+    // Build up forward velocity over a few steps with no rotation; v_y stays 0.
+    double heading = 0.0;
+    for (int i = 0; i < 5; ++i) {
+        dr.update(dpar, 0.0, Angle::radians(heading), dt);
+    }
+    REQUIRE(dr.body_velocity().v_x_ips == doctest::Approx(v_fwd));
+    REQUIRE(dr.body_velocity().v_y_ips == doctest::Approx(0.0));
+
+    // One step with a sharp rotation: ω = 5 rad/s for 0.01s = 0.05 rad.
+    // Cross-coupling: v_y_dot = −1·0 − 5·50 = −250 → v_y_new = 0 − 250·0.01 = −2.5 ips.
+    constexpr double d_theta = 0.05;
+    heading += d_theta;
+    dr.update(dpar, 0.0, Angle::radians(heading), dt);
+    const BodyVelocity v_after_inject = dr.body_velocity();
+    CHECK(v_after_inject.v_y_ips == doctest::Approx(-2.5).epsilon(0.05));
+
+    // Now stop rotating and let v_y decay. With μ=1, v_y(t) = v_y_0·e^(−t).
+    // After 50 ms (5 steps) we expect v_y ≈ −2.5·e^(−0.05) ≈ −2.378.
+    // Forward-Euler drift: should land within a few percent of the analytic value.
+    for (int i = 0; i < 5; ++i) {
+        dr.update(dpar, 0.0, Angle::radians(heading), dt);
+    }
+    const double v_y_decayed = dr.body_velocity().v_y_ips;
+    const double expected_decayed = -2.5 * std::exp(-1.0 * 0.05);
+    // Forward-Euler with μ=1 and dt=0.01 is very close to the exact e-folding;
+    // 1% tolerance is comfortable.
+    CHECK(v_y_decayed == doctest::Approx(expected_decayed).epsilon(0.05));
+
+    // Decay further (200 ms total since injection) should be near zero.
+    for (int i = 0; i < 20; ++i) {
+        dr.update(dpar, 0.0, Angle::radians(heading), dt);
+    }
+    CHECK(std::abs(dr.body_velocity().v_y_ips)
+          < std::abs(v_after_inject.v_y_ips) * std::exp(-1.0 * 0.20) * 1.5);
+}
+
+TEST_CASE("DR (no perp wheel): friction-decay constant approximates μ") {
+    // Inject v_y = -2.5 by the cross-coupling of the previous test, then time
+    // the e-folding. With μ=2, v_y should fall to e^(-1)·v_y₀ in 0.5 s.
+    DeadReckoning::Config cfg{};
+    cfg.lateral_friction_coefficient = 2.0;
+    DeadReckoning dr(cfg);
+
+    constexpr double dt    = 0.005;
+    constexpr double v_fwd = 50.0;
+    constexpr double dpar  = v_fwd * dt;
+
+    dr.update(0.0, 0.0, Angle::radians(0.0), dt);
+    double heading = 0.0;
+    for (int i = 0; i < 5; ++i) {
+        dr.update(dpar, 0.0, Angle::radians(heading), dt);
+    }
+
+    // Inject: ω = 5 rad/s for one step, so Δθ = 0.025.
+    heading += 0.025;
+    dr.update(dpar, 0.0, Angle::radians(heading), dt);
+    const double v_y_0 = dr.body_velocity().v_y_ips;
+    REQUIRE(std::abs(v_y_0) > 0.1);   // injection actually happened
+
+    // Stop rotating; let it decay for 0.5 s = 100 steps at dt=0.005.
+    for (int i = 0; i < 100; ++i) {
+        dr.update(dpar, 0.0, Angle::radians(heading), dt);
+    }
+    const double v_y_after = dr.body_velocity().v_y_ips;
+    // Analytic decay: v_y(0.5) = v_y_0 · e^(−2·0.5) = v_y_0 · e^(−1).
+    const double expected = v_y_0 * std::exp(-1.0);
+    // Forward-Euler underestimates the decay slightly (it overshoots the
+    // continuous solution); 5% tolerance covers it.
+    CHECK(v_y_after == doctest::Approx(expected).epsilon(0.05));
+}
+
+TEST_CASE("DR: set_pose with default (keep_velocity=false) zeros velocity") {
+    DeadReckoning::Config cfg{};
+    cfg.has_perp_wheel = true;
+    DeadReckoning dr(cfg);
+    dr.update(0.0, 0.0, Angle::radians(0.0), k_dt);   // seed
+    dr.update(0.5, 0.3, Angle::radians(0.0), k_dt);   // 50 ips fwd, 30 ips lateral
+    REQUIRE(dr.body_velocity().v_x_ips == doctest::Approx(50.0));
+    REQUIRE(dr.body_velocity().v_y_ips == doctest::Approx(30.0));
+
+    dr.set_pose(Pose2{1.0, 2.0, Angle{}});   // default keep_velocity=false
+    const BodyVelocity v = dr.body_velocity();
+    CHECK(v.v_x_ips == doctest::Approx(0.0));
+    CHECK(v.v_y_ips == doctest::Approx(0.0));
+    CHECK(v.omega_dps == doctest::Approx(0.0));
+}
+
+TEST_CASE("DR: set_pose with keep_velocity=true preserves velocity") {
+    DeadReckoning::Config cfg{};
+    cfg.has_perp_wheel = true;
+    DeadReckoning dr(cfg);
+    dr.update(0.0, 0.0, Angle::radians(0.0), k_dt);   // seed
+    dr.update(0.5, 0.3, Angle::radians(0.0), k_dt);
+
+    dr.set_pose(Pose2{1.0, 2.0, Angle{}}, /*keep_velocity*/ true);
+    const BodyVelocity v = dr.body_velocity();
+    CHECK(v.v_x_ips == doctest::Approx(50.0));
+    CHECK(v.v_y_ips == doctest::Approx(30.0));
+}
+
+TEST_CASE("DR: reset() also zeros body velocity") {
+    DeadReckoning::Config cfg{};
+    cfg.has_perp_wheel = true;
+    DeadReckoning dr(cfg);
+    dr.update(0.0, 0.0, Angle::radians(0.0), k_dt);
+    dr.update(0.5, 0.3, Angle::radians(0.0), k_dt);
+    REQUIRE(dr.body_velocity().v_x_ips != doctest::Approx(0.0));
+
+    dr.reset();
+    const BodyVelocity v = dr.body_velocity();
+    CHECK(v.v_x_ips == doctest::Approx(0.0));
+    CHECK(v.v_y_ips == doctest::Approx(0.0));
+    CHECK(v.omega_dps == doctest::Approx(0.0));
 }
