@@ -1,0 +1,5 @@
+pathfinder_add_test(test_controllers_pid             test_pid.cpp)
+pathfinder_add_test(test_controllers_exit_conditions test_exit_conditions.cpp)
+pathfinder_add_test(test_controllers_slew_limiter    test_slew_limiter.cpp)
+pathfinder_add_test(test_controllers_motion_profile  test_motion_profile.cpp)
+pathfinder_add_test(test_controllers_feed_forward    test_feed_forward.cpp)
