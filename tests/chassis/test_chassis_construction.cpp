@@ -74,7 +74,7 @@ TEST_CASE("Chassis: bot/sensors/drive accessors return the configured values") {
     CHECK(chassis.sensors().imus().size() == 1u);
 }
 
-TEST_CASE("Chassis: Ekf and Mcl tags compile and fall back to DR with a warning") {
+TEST_CASE("Chassis: Ekf and Mcl tags construct real estimators") {
     SimRig rig;
     Chassis chassis_ekf(make_left_group(rig),
                         make_right_group(rig),
@@ -82,7 +82,10 @@ TEST_CASE("Chassis: Ekf and Mcl tags compile and fall back to DR with a warning"
                         make_sensors_from_rig(rig),
                         Localization::Ekf,
                         make_drive(rig));
+    // EKF pose is exact at construction (state initialized to (0,0,0); the
+    // 6-DOF covariance is nonzero but the mean is the seed pose).
     CHECK(chassis_ekf.getPose().x == doctest::Approx(0.0));
+    CHECK(chassis_ekf.getPose().y == doctest::Approx(0.0));
 
     SimRig rig2;
     Chassis chassis_mcl(make_left_group(rig2),
@@ -91,5 +94,9 @@ TEST_CASE("Chassis: Ekf and Mcl tags compile and fall back to DR with a warning"
                         make_sensors_from_rig(rig2),
                         Localization::Mcl{.particles = 100},
                         make_drive(rig2));
-    CHECK(chassis_mcl.getPose().x == doctest::Approx(0.0));
+    // MCL pose is the weighted mean of particles sampled from
+    // N(initial_pose, initial_xy_sigma=1.0); with 100 particles it's near
+    // zero but not exactly zero. ~0.3 absolute is a generous bound.
+    CHECK(std::abs(chassis_mcl.getPose().x) < 0.5);
+    CHECK(std::abs(chassis_mcl.getPose().y) < 0.5);
 }

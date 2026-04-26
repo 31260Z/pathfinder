@@ -15,15 +15,21 @@
 #include <pathfinder/geometry/pose2.hpp>
 #include <pathfinder/geometry/vector2.hpp>
 #include <pathfinder/odometry/dead_reckoning.hpp>
+#include <pathfinder/odometry/ekf.hpp>
+#include <pathfinder/odometry/i_localizer.hpp>
+#include <pathfinder/odometry/localizers.hpp>
+#include <pathfinder/odometry/mcl.hpp>
 #include <pathfinder/sensors/frame_helpers.hpp>
 #include <pathfinder/sensors/sensors.hpp>
 
 #include <chrono>
 #include <cmath>
 #include <iostream>
+#include <memory>
 #include <stdexcept>
 #include <string_view>
 #include <thread>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -64,8 +70,7 @@ public:
           bot_(std::move(bot)),
           sensors_(std::move(sensors)),
           drive_(drive_config),
-          odom_(make_dr_config(bot_, sensors_, drive_)) {
-        warn_unimplemented_tier(localization);
+          odom_(make_localizer(std::move(localization))) {
         seed_sensor_state();
     }
 
@@ -91,18 +96,18 @@ public:
 
     void setPose(double x_in, double y_in, double heading_deg) {
         const Pose2 p{x_in, y_in, Angle::degrees(heading_deg)};
-        odom_.set_pose(p);
+        odom_->set_pose(p);
         // Drop the integration history: the next tick is a "first" again so
         // that any encoder delta accumulated since the last poll doesn't get
         // re-applied to the teleported pose.
-        odom_.reset();
+        odom_->reset();
         seed_sensor_state();
     }
 
-    Pose2 getPose() const { return odom_.pose(); }
+    Pose2 getPose() const { return odom_->pose(); }
 
     // Pose covariance is always zero in DR. Wave F populates it from the EKF.
-    Matrix3 getPoseCovariance() const { return Matrix3::zero(); }
+    Matrix3 getPoseCovariance() const { return odom_->pose_covariance(); }
 
     // ── Motion verbs (sync default) ────────────────────────────────────
     void moveTo(Vector2 target, MoveOpts opts = {}) {
@@ -118,7 +123,7 @@ public:
         o.lookahead_time_sec = opts.lookahead_time_sec;
         o.min_exit_speed_ips = opts.min_exit_speed_ips;
 
-        MoveToPoint ctrl(odom_.pose(), target, o);
+        MoveToPoint ctrl(odom_->pose(), target, o);
         run_until_done(ctrl, opts.timeout_ms);
     }
 
@@ -136,7 +141,7 @@ public:
         o.lookahead_time_sec = opts.lookahead_time_sec;
         o.min_exit_speed_ips = opts.min_exit_speed_ips;
 
-        Boomerang ctrl(odom_.pose(), target, o);
+        Boomerang ctrl(odom_->pose(), target, o);
         run_until_done(ctrl, opts.timeout_ms);
     }
 
@@ -354,7 +359,7 @@ public:
 
     TickResult tick(double dt_sec) {
         tick_odometry(dt_sec);
-        return TickResult{odom_.pose(), DriveCommand{}, true};
+        return TickResult{odom_->pose(), DriveCommand{}, true};
     }
 
     // ── Bot-relative point access (delegates to Bot) ───────────────────
@@ -372,7 +377,7 @@ public:
     // the spec §8 friction-decay + cross-coupling model when no perp wheel
     // is installed. Used by drift-aware controllers and by the DriftCoeff
     // calibration utility.
-    BodyVelocity getBodyVelocity() const { return odom_.body_velocity(); }
+    BodyVelocity getBodyVelocity() const { return odom_->body_velocity(); }
 
     // Per-side last-commanded voltage for tests that don't want to reach
     // through the underlying FakeMotors.
@@ -413,7 +418,7 @@ private:
 
         // IMU heading: simple average of all populated IMUs in bot frame.
         // Wave F replaces this with covariance-weighted fusion.
-        Angle heading = odom_.pose().heading;
+        Angle heading = odom_->pose().heading;
         if (!sensors_.imus().empty()) {
             double s_sum = 0.0, c_sum = 0.0;
             int    count = 0;
@@ -427,7 +432,8 @@ private:
             if (count > 0) heading = Angle{std::atan2(s_sum, c_sum)};
         }
 
-        odom_.update(par_in, perp_in, heading, dt_sec);
+        odom_->predict(par_in, perp_in, heading, dt_sec);
+        odom_->process_observations(sensors_);
     }
 
     double read_first_parallel_position_revs() const {
@@ -455,7 +461,7 @@ private:
         while (!ctrl.done()) {
             tick_odometry(dt_sec);
             const DriveCommand cmd = call_controller_update(
-                ctrl, odom_.pose(), odom_.body_velocity(), dt_sec);
+                ctrl, odom_->pose(), odom_->body_velocity(), dt_sec);
             apply_drive_command(cmd);
             if (elapsed_ms_since(start) > timeout_ms) break;
             host_sleep_for_ms(static_cast<int>(dt_sec * 1000.0));
@@ -565,14 +571,14 @@ private:
     static DeadReckoning::Config make_dr_config(const Bot& bot, const Sensors& sensors,
                                                 const Drive& drive) {
         DeadReckoning::Config cfg{};
-        if (!sensors.parallel_wheels().empty()) {
-            const Vector2 c = corner_to_center_offset(
-                sensors.parallel_wheels().front().offset, bot);
+        const auto par_wheels = sensors.parallel_wheels();
+        if (!par_wheels.empty()) {
+            const Vector2 c = corner_to_center_offset(par_wheels.front().offset, bot);
             cfg.parallel_wheel_y_offset_in = c.y;
         }
-        if (!sensors.perpendicular_wheels().empty()) {
-            const Vector2 c = corner_to_center_offset(
-                sensors.perpendicular_wheels().front().offset, bot);
+        const auto perp_wheels = sensors.perpendicular_wheels();
+        if (!perp_wheels.empty()) {
+            const Vector2 c = corner_to_center_offset(perp_wheels.front().offset, bot);
             cfg.perp_wheel_x_offset_in = c.x;
             cfg.has_perp_wheel         = true;
         }
@@ -580,14 +586,43 @@ private:
         return cfg;
     }
 
-    static void warn_unimplemented_tier(Localization::DeadReckoning_t) {}
-    static void warn_unimplemented_tier(Localization::Ekf_t) {
-        std::cerr << "[pathfinder] Localization::Ekf is not implemented in this "
-                     "build (Wave F); falling back to DeadReckoning.\n";
+    static Ekf::Config make_ekf_config(const Bot& bot, const Sensors& sensors,
+                                        const Drive& drive) {
+        Ekf::Config cfg{};
+        const auto par_wheels = sensors.parallel_wheels();
+        if (!par_wheels.empty()) {
+            const Vector2 c = corner_to_center_offset(par_wheels.front().offset, bot);
+            cfg.parallel_wheel_y_offset_in = c.y;
+        }
+        const auto perp_wheels = sensors.perpendicular_wheels();
+        if (!perp_wheels.empty()) {
+            const Vector2 c = corner_to_center_offset(perp_wheels.front().offset, bot);
+            cfg.perp_wheel_x_offset_in = c.x;
+            cfg.has_perp_wheel         = true;
+        }
+        cfg.lateral_friction_coefficient = drive.lateral_friction_coefficient;
+        return cfg;
     }
-    static void warn_unimplemented_tier(const Localization::Mcl&) {
-        std::cerr << "[pathfinder] Localization::Mcl is not implemented in this "
-                     "build (Wave F); falling back to DeadReckoning.\n";
+
+    static Mcl::Config make_mcl_config(const Drive& /*drive*/, Localization::Mcl loc) {
+        Mcl::Config cfg{};
+        cfg.field_map      = std::move(loc.field_map);
+        cfg.particle_count = loc.particles;
+        return cfg;
+    }
+
+    template <typename Loc>
+    std::unique_ptr<ILocalizer> make_localizer(Loc loc) {
+        if constexpr (std::is_same_v<Loc, Localization::DeadReckoning_t>) {
+            return std::make_unique<DrLocalizer>(make_dr_config(bot_, sensors_, drive_));
+        } else if constexpr (std::is_same_v<Loc, Localization::Ekf_t>) {
+            return std::make_unique<EkfLocalizer>(make_ekf_config(bot_, sensors_, drive_));
+        } else if constexpr (std::is_same_v<Loc, Localization::Mcl>) {
+            return std::make_unique<MclLocalizer>(make_mcl_config(drive_, std::move(loc)));
+        } else {
+            static_assert(sizeof(Loc) == 0,
+                          "Unsupported Localization tag — use DeadReckoning, Ekf, or Mcl{...}");
+        }
     }
 
     void guard_async(bool async) const {
@@ -613,7 +648,7 @@ private:
     Bot                   bot_;
     Sensors               sensors_;
     Drive                 drive_;
-    DeadReckoning         odom_;
+    std::unique_ptr<ILocalizer> odom_;
     ControllerStack       lateral_{};
     ControllerStack       angular_{};
     double                prev_par_pos_revs_  = 0.0;
