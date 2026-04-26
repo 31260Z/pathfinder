@@ -1,0 +1,1 @@
+pathfinder_add_test(test_odometry_dead_reckoning test_dead_reckoning.cpp)
