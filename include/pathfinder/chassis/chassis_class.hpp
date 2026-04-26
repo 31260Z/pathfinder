@@ -19,11 +19,13 @@
 #include <pathfinder/odometry/i_localizer.hpp>
 #include <pathfinder/odometry/localizers.hpp>
 #include <pathfinder/odometry/mcl.hpp>
+#include <pathfinder/runtime/telemetry.hpp>
 #include <pathfinder/sensors/frame_helpers.hpp>
 #include <pathfinder/sensors/sensors.hpp>
 
 #include <chrono>
 #include <cmath>
+#include <functional>
 #include <iostream>
 #include <memory>
 #include <stdexcept>
@@ -112,6 +114,7 @@ public:
     // ── Motion verbs (sync default) ────────────────────────────────────
     void moveTo(Vector2 target, MoveOpts opts = {}) {
         guard_async(opts.async);
+        ScopedVerb v(*this, "moveTo");
         MoveToPoint::Options o{};
         o.along_track        = opts.along_track.value_or(lateral_.feedback);
         o.cross_track        = opts.cross_track.value_or(lateral_.feedback);
@@ -129,6 +132,7 @@ public:
 
     void moveToPose(Pose2 target, MoveOpts opts = {}) {
         guard_async(opts.async);
+        ScopedVerb v(*this, "moveToPose");
         Boomerang::Options o{};
         o.along_track        = opts.along_track.value_or(lateral_.feedback);
         o.cross_track        = opts.cross_track.value_or(lateral_.feedback);
@@ -147,6 +151,7 @@ public:
 
     void turnTo(double heading_deg, TurnOpts opts = {}) {
         guard_async(opts.async);
+        ScopedVerb v(*this, "turnTo");
         TurnTo::Options o{};
         o.heading         = opts.heading.value_or(angular_.feedback);
         o.exit            = opts.exit.value_or(default_turn_exit());
@@ -158,6 +163,7 @@ public:
 
     void turnTo(Vector2 target_point, TurnOpts opts = {}) {
         guard_async(opts.async);
+        ScopedVerb v(*this, "turnTo");
         TurnTo::Options o{};
         o.heading         = opts.heading.value_or(angular_.feedback);
         o.exit            = opts.exit.value_or(default_turn_exit());
@@ -173,6 +179,7 @@ public:
     // active swing side is stashed in `swing_lock_side_` and cleared at exit.
     void swingTo(double heading_deg, Side side, TurnOpts opts = {}) {
         guard_async(opts.async);
+        ScopedVerb v(*this, "swingTo");
         TurnTo::Options o{};
         o.heading         = opts.heading.value_or(angular_.feedback);
         o.exit            = opts.exit.value_or(default_turn_exit());
@@ -185,6 +192,7 @@ public:
 
     void swingTo(Vector2 target_point, Side side, TurnOpts opts = {}) {
         guard_async(opts.async);
+        ScopedVerb v(*this, "swingTo");
         TurnTo::Options o{};
         o.heading         = opts.heading.value_or(angular_.feedback);
         o.exit            = opts.exit.value_or(default_turn_exit());
@@ -197,6 +205,7 @@ public:
 
     void follow(std::vector<Vector2> waypoints, FollowOpts opts = {}) {
         guard_async(opts.async);
+        ScopedVerb v(*this, "follow");
         if (waypoints.size() < 2) {
             throw std::invalid_argument("Chassis::follow: need at least two waypoints");
         }
@@ -218,6 +227,7 @@ public:
 
     void follow(std::vector<Waypoint> waypoints, FollowOpts opts = {}) {
         guard_async(opts.async);
+        ScopedVerb v(*this, "follow");
         if (waypoints.size() < 2) {
             throw std::invalid_argument("Chassis::follow: need at least two waypoints");
         }
@@ -274,6 +284,7 @@ public:
     template <typename PollFn, typename ContinueFn>
     void opcontrol(TankDrive mode, PollFn poll, ContinueFn keep_going) {
         constexpr double dt = 0.010;
+        ScopedVerb v(*this, "opcontrol");
         while (keep_going()) {
             const double l = apply_curve(poll(mode.left_axis),  mode.expo_curve, mode.deadband);
             const double r = apply_curve(poll(mode.right_axis), mode.expo_curve, mode.deadband);
@@ -282,6 +293,7 @@ public:
             tick_odometry(dt);
             write_per_side_voltage(drive_.ips_to_voltage_mv(l_ips),
                                    drive_.ips_to_voltage_mv(r_ips));
+            emit_telemetry();
             host_sleep_for_ms(static_cast<int>(dt * 1000.0));
         }
         write_per_side_voltage(0.0, 0.0);
@@ -290,6 +302,7 @@ public:
     template <typename PollFn, typename ContinueFn>
     void opcontrol(ArcadeDrive mode, PollFn poll, ContinueFn keep_going) {
         constexpr double dt = 0.010;
+        ScopedVerb v(*this, "opcontrol");
         while (keep_going()) {
             const double f = apply_curve(poll(mode.forward_axis), mode.expo_curve, mode.deadband);
             const double t = apply_curve(poll(mode.turn_axis),    mode.expo_curve, mode.deadband);
@@ -298,6 +311,7 @@ public:
             tick_odometry(dt);
             write_per_side_voltage(drive_.ips_to_voltage_mv(f_ips + t_ips),
                                    drive_.ips_to_voltage_mv(f_ips - t_ips));
+            emit_telemetry();
             host_sleep_for_ms(static_cast<int>(dt * 1000.0));
         }
         write_per_side_voltage(0.0, 0.0);
@@ -306,6 +320,7 @@ public:
     template <typename PollFn, typename ContinueFn>
     void opcontrol(CurvatureDrive mode, PollFn poll, ContinueFn keep_going) {
         constexpr double dt = 0.010;
+        ScopedVerb v(*this, "opcontrol");
         while (keep_going()) {
             const double th = apply_curve(poll(mode.throttle_axis),  mode.expo_curve, mode.deadband);
             const double cv = apply_curve(poll(mode.curvature_axis), mode.expo_curve, mode.deadband);
@@ -317,6 +332,35 @@ public:
             tick_odometry(dt);
             write_per_side_voltage(drive_.ips_to_voltage_mv(th_ips + curve_v),
                                    drive_.ips_to_voltage_mv(th_ips - curve_v));
+            emit_telemetry();
+            host_sleep_for_ms(static_cast<int>(dt * 1000.0));
+        }
+        write_per_side_voltage(0.0, 0.0);
+    }
+
+    // Flight-style rate mode (spec §10): stick deflection commands a body-rate
+    // (forward in/s + yaw deg/s); the standard tank-kinematics + voltage map
+    // closes the per-side velocity loop, so response is consistent across
+    // battery and load. `should_exit` is polled each tick: returns true to
+    // stop the loop. For PROS, pass `[]{ return pros::competition::is_disabled(); }`.
+    // For tests, bound iterations.
+    template <typename PollAxisFn, typename ShouldExitFn>
+    void opcontrol(FlightStyle::Rate mode, PollAxisFn poll_axis, ShouldExitFn should_exit) {
+        constexpr double dt = 0.010;
+        ScopedVerb v(*this, "opcontrol");
+        while (!should_exit()) {
+            const double f = apply_flight_curve(poll_axis(mode.forward_axis),
+                                                mode.expo_forward, mode.deadband);
+            const double y = apply_flight_curve(poll_axis(mode.yaw_axis),
+                                                mode.expo_yaw, mode.deadband);
+            DriveCommand cmd{};
+            cmd.forward_velocity_ips = f * mode.max_forward_ips;
+            cmd.angular_velocity_dps = y * mode.max_yaw_dps;
+            cmd.done                 = false;
+
+            tick_odometry(dt);
+            apply_drive_command(cmd);
+            emit_telemetry();
             host_sleep_for_ms(static_cast<int>(dt * 1000.0));
         }
         write_per_side_voltage(0.0, 0.0);
@@ -335,6 +379,10 @@ public:
     template <typename PollFn>
     void opcontrol(CurvatureDrive mode, PollFn poll) {
         opcontrol(mode, poll, [] { return true; });
+    }
+    template <typename PollAxisFn>
+    void opcontrol(FlightStyle::Rate mode, PollAxisFn poll_axis) {
+        opcontrol(mode, poll_axis, [] { return false; });
     }
 
     // ── Controller defaults ────────────────────────────────────────────
@@ -383,6 +431,18 @@ public:
     // through the underlying FakeMotors.
     double last_left_voltage_mv()  const { return last_left_mv_; }
     double last_right_voltage_mv() const { return last_right_mv_; }
+
+    // ── Telemetry (spec §14, build-order step 20) ──────────────────────
+    Telemetry&       telemetry()       { return telemetry_; }
+    const Telemetry& telemetry() const { return telemetry_; }
+
+    // Convenience: replace the telemetry sink without going through
+    // `chassis.telemetry().set_sink(...)`.
+    void set_telemetry_sink(Telemetry::Sink sink) { telemetry_.set_sink(std::move(sink)); }
+
+    // The active motion verb's name, for tests + diagnostics. "idle" when no
+    // motion is running.
+    std::string_view active_verb() const { return current_verb_; }
 
 private:
     // ── Sensor → odom integration ──────────────────────────────────────
@@ -463,6 +523,7 @@ private:
             const DriveCommand cmd = call_controller_update(
                 ctrl, odom_->pose(), odom_->body_velocity(), dt_sec);
             apply_drive_command(cmd);
+            emit_telemetry();
             if (elapsed_ms_since(start) > timeout_ms) break;
             host_sleep_for_ms(static_cast<int>(dt_sec * 1000.0));
         }
@@ -559,6 +620,12 @@ private:
         return (1.0 - e) * stick + e * stick * stick * stick;
     }
 
+    // FlightStyle::Rate uses its own per-axis expo curves; reuse the same
+    // shape but re-clamp expo independently on each axis.
+    static double apply_flight_curve(double stick, double expo, double deadband) {
+        return apply_curve(stick, expo, deadband);
+    }
+
     static void host_sleep_for_ms(int ms) {
         if (ms > 0) std::this_thread::sleep_for(std::chrono::milliseconds(ms));
     }
@@ -642,6 +709,45 @@ private:
         ScopedSwing& operator=(const ScopedSwing&) = delete;
     };
 
+    // RAII helper: tags the chassis with the active motion verb's name for
+    // the duration of one motion call, restores to "idle" on destruction.
+    // The telemetry record reads `current_verb_` on every emit. Every public
+    // motion entry point + opcontrol overload constructs one of these as its
+    // first action.
+    struct ScopedVerb {
+        Chassis&         c;
+        std::string_view prev;
+        ScopedVerb(Chassis& chassis, std::string_view name)
+            : c(chassis), prev(chassis.current_verb_) {
+            c.current_verb_ = name;
+        }
+        ~ScopedVerb() { c.current_verb_ = prev; }
+        ScopedVerb(const ScopedVerb&)            = delete;
+        ScopedVerb& operator=(const ScopedVerb&) = delete;
+    };
+
+    // Emit one telemetry record reflecting the chassis's current state.
+    // Called from the motion / opcontrol loops on every tick. Cheap when the
+    // sink is empty (the format step still runs — accept that cost rather
+    // than gate on `enabled()`, since users typically attach a sink for
+    // production runs and the format is only ~280 chars of snprintf).
+    void emit_telemetry() {
+        TelemetryRecord rec{};
+        rec.pose     = odom_->pose();
+        rec.v_body   = odom_->body_velocity();
+        rec.pose_cov = odom_->pose_covariance();
+        rec.verb     = current_verb_;
+        rec.left_mv  = last_left_mv_;
+        rec.right_mv = last_right_mv_;
+        // Per-call verbs populate target / errors before triggering the
+        // tick; the chassis-level emitter here just publishes the
+        // chassis-side data. (Wave G keeps the per-controller error pipe
+        // simple — autonomous controllers don't expose along/cross-track
+        // accessors, so we leave those zeros here. The verb name is the
+        // useful signal for now.)
+        telemetry_.tick(rec);
+    }
+
     // ── State ──────────────────────────────────────────────────────────
     MotorGroup            left_;
     MotorGroup            right_;
@@ -656,6 +762,8 @@ private:
     double                last_left_mv_       = 0.0;
     double                last_right_mv_      = 0.0;
     std::optional<Side>   swing_lock_side_    = std::nullopt;
+    Telemetry             telemetry_{};
+    std::string_view      current_verb_       = "idle";
 };
 
 } // namespace pathfinder

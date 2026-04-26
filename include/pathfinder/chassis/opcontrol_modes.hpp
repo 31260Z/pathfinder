@@ -33,4 +33,24 @@ struct CurvatureDrive {
     double       deadband       = 0.05;
 };
 
+// Flight-style opcontrol modes (spec §10). Stick deflection commands a
+// target body rate (linear in/s + yaw deg/s); the chassis closes the loop
+// internally so response is consistent across battery voltage and load.
+//
+// `Rate` is the only flight mode in v1 — `HeadingHold` and `StationKeep`
+// were cut from scope (CLAUDE.md "Driver-control modes").
+namespace FlightStyle {
+
+struct Rate {
+    JoystickAxis forward_axis    = JoystickAxis::LeftY;
+    JoystickAxis yaw_axis        = JoystickAxis::RightX;
+    double       max_forward_ips = 60.0;     // in/s at full deflection
+    double       max_yaw_dps     = 270.0;    // deg/s at full deflection
+    double       expo_forward    = 0.4;
+    double       expo_yaw        = 0.3;
+    double       deadband        = 0.05;
+};
+
+} // namespace FlightStyle
+
 } // namespace pathfinder
