@@ -1,0 +1,7 @@
+pathfinder_add_test(test_geometry_vector2   test_vector2.cpp)
+pathfinder_add_test(test_geometry_angle     test_angle.cpp)
+pathfinder_add_test(test_geometry_matrix3   test_matrix3.cpp)
+pathfinder_add_test(test_geometry_pose2     test_pose2.cpp)
+pathfinder_add_test(test_geometry_footprint test_footprint.cpp)
+pathfinder_add_test(test_geometry_bot       test_bot.cpp)
+pathfinder_add_test(test_geometry_params    test_params.cpp)
