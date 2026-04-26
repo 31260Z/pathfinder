@@ -1,1 +1,3 @@
 pathfinder_add_test(test_calibration_drift_coeff test_drift_coeff.cpp)
+pathfinder_add_test(test_calibration_wheel_finder test_wheel_finder.cpp)
+pathfinder_add_test(test_calibration_auto_pid     test_auto_pid.cpp)
