@@ -1,0 +1,8 @@
+pathfinder_add_test(test_chassis_construction      test_chassis_construction.cpp)
+pathfinder_add_test(test_chassis_odometry_pipeline test_chassis_odometry_pipeline.cpp)
+pathfinder_add_test(test_chassis_motor_output      test_chassis_motor_output.cpp)
+pathfinder_add_test(test_chassis_move_to           test_chassis_move_to.cpp)
+pathfinder_add_test(test_chassis_turn_to           test_chassis_turn_to.cpp)
+pathfinder_add_test(test_chassis_follow            test_chassis_follow.cpp)
+pathfinder_add_test(test_chassis_named_points      test_chassis_named_points.cpp)
+pathfinder_add_test(test_chassis_async_throws      test_chassis_async_throws.cpp)
