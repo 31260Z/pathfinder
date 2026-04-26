@@ -7,3 +7,5 @@ compile_commands.json
 .idea/
 *.swp
 *~
+pathfinder@*.zip
+pros_template/include/
