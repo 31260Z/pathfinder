@@ -1,0 +1,2 @@
+pathfinder_add_test(test_driving_motor_group test_motor_group.cpp)
+pathfinder_add_test(test_driving_brake_mode  test_brake_mode.cpp)

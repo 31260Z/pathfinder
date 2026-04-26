@@ -1,0 +1,5 @@
+pathfinder_add_test(test_sensors_tracking_wheel    test_tracking_wheel.cpp)
+pathfinder_add_test(test_sensors_imu                test_imu.cpp)
+pathfinder_add_test(test_sensors_distance_sensor    test_distance_sensor.cpp)
+pathfinder_add_test(test_sensors_builder            test_sensors_builder.cpp)
+pathfinder_add_test(test_sensors_corner_to_center   test_corner_to_center.cpp)
