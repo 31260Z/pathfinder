@@ -1,0 +1,6 @@
+pathfinder_add_test(test_autonomous_drive_command  test_drive_command.cpp)
+pathfinder_add_test(test_autonomous_move_to        test_move_to.cpp)
+pathfinder_add_test(test_autonomous_turn_to        test_turn_to.cpp)
+pathfinder_add_test(test_autonomous_boomerang      test_boomerang.cpp)
+pathfinder_add_test(test_autonomous_catmull_rom    test_catmull_rom.cpp)
+pathfinder_add_test(test_autonomous_pure_pursuit   test_pure_pursuit.cpp)
