@@ -8,80 +8,31 @@
 </head>
 <body>
 
-<aside class="sidebar">
-  <div class="sidebar-header">
-    <h1>Pathfinder</h1>
-    <div class="version">v0.1 &mdash; for PROS 4.2+</div>
+<header class="site-header">
+  <div class="header-inner">
+    <a href="#" class="header-logo"><span>path</span>finder</a>
+    <nav class="header-nav">
+      <a href="#overview">Overview</a>
+      <a href="#quick-start">Quick Start</a>
+      <a href="#install">Install</a>
+      <a href="#modules">Modules</a>
+      <a href="#reference">API Ref</a>
+    </nav>
   </div>
-  <nav>
-    <a href="#overview">Overview</a>
-    <a href="#quick-start">Quick Start</a>
-    <a href="#install">Install</a>
+</header>
 
-    <div class="section-title">Modules</div>
-    <a href="#geometry">Geometry</a>
-    <a href="#sensors">Sensors</a>
-    <a href="#controllers">Controllers</a>
-    <a href="#autonomous">Autonomous</a>
-    <a href="#odometry">Odometry</a>
-    <a href="#calibration">Calibration</a>
-    <a href="#chassis">Chassis</a>
-    <a href="#driving">Driving</a>
-    <a href="#telemetry">Telemetry</a>
-    <a href="#pros-adapters">PROS Adapters</a>
-
-    <div class="section-title">Reference</div>
-    <a href="#drive-config">Drive Config</a>
-    <a href="#move-opts">Move Options</a>
-    <a href="#follow-opts">Follow Options</a>
-    <a href="#turn-opts">Turn Options</a>
-    <a href="#controller-stack">Controller Stack</a>
-    <a href="#localization-tiers">Localization Tiers</a>
-    <a href="#opcontrol-modes">Opcontrol Modes</a>
-  </nav>
-</aside>
-
-<main class="content">
+<div class="container">
 
 <!-- ============================================================ -->
 <section id="overview" class="hero">
-  <h2>Pathfinder</h2>
-  <p class="tagline">Movement library for VEX V5 robots running PROS &mdash; pose tracking, calibration, controllers, and autonomous primitives. Same family as LemLib / EZ-Template, more ambitious in scope.</p>
-  <div class="badges">
-    <span class="badge">C++20</span>
-    <span class="badge">PROS 4.2</span>
-    <span class="badge">VEX V5</span>
-    <span class="badge outline">Header-only</span>
-    <span class="badge outline">45 tests passing</span>
-  </div>
-</section>
-
-<section>
-  <div class="feature-grid">
-    <div class="feature-card">
-      <h4>Pose Tracking</h4>
-      <p>6-DOF state estimator (pose + body velocity). Three tiers: dead reckoning, EKF, and MCL against a field map.</p>
-    </div>
-    <div class="feature-card">
-      <h4>Autonomous Primitives</h4>
-      <p>moveTo, moveToPose (Boomerang), turnTo, swingTo, and spline-based follow with waypoint annotations.</p>
-    </div>
-    <div class="feature-card">
-      <h4>Drift-Aware Control</h4>
-      <p>Cross-track regulator uses body-frame lateral velocity for lookahead prediction. Motion chaining inherits drift between segments.</p>
-    </div>
-    <div class="feature-card">
-      <h4>Automatic Calibration</h4>
-      <p>WheelFinder finds tracking-wheel offsets. AutoPid synthesizes PID gains from step-response data. DriftCoeff measures lateral friction.</p>
-    </div>
-    <div class="feature-card">
-      <h4>Declarative Sensors</h4>
-      <p>Builder API for tracking wheels, IMUs, distance sensors, and landmarks. Full PROS adapter suite.</p>
-    </div>
-    <div class="feature-card">
-      <h4>Host-Testable Math</h4>
-      <p>Header-only, host-buildable. All controllers, odometry, and geometry are tested off-robot with doctest (45/45 passing).</p>
-    </div>
+  <h1><span>path</span>finder</h1>
+  <p class="subtitle">Movement library for VEX V5 robots running PROS &mdash; pose tracking, calibration, controllers, and autonomous primitives. Same family as LemLib and EZ-Template.</p>
+  <div class="meta">
+    <span class="highlight">C++20</span>
+    <span>PROS 4.2</span>
+    <span>VEX V5</span>
+    <span>Header-only</span>
+    <span>45 tests</span>
   </div>
 </section>
 
@@ -110,7 +61,7 @@ auto sensors = pathfinder::SensorBuilder{}
 
 // 3. Create the chassis
 auto chassis = pathfinder::Chassis(drive, sensors);
-chassis.resetPose({0, 0, 90}); &emsp; // start center, facing right
+chassis.resetPose({0, 0, 90});          // start center, facing right
 
 // 4. Autonomous
 void autonomous() {
@@ -143,7 +94,27 @@ ctest --test-dir build --output-on-failure</code></pre>
 cd your_pros_project
 pros conduct fetch /path/to/pathfinder@0.1.0.zip
 pros conduct apply pathfinder
-pros mu                         &emsp; // build + upload</code></pre>
+pros mu                         // build + upload</code></pre>
+</section>
+
+<!-- ============================================================ -->
+<section id="modules">
+  <h2>Modules</h2>
+  <div class="toc-grid">
+    <a href="#geometry">Geometry</a>
+    <a href="#sensors">Sensors</a>
+    <a href="#controllers">Controllers</a>
+    <a href="#autonomous">Autonomous</a>
+    <a href="#odometry">Odometry</a>
+    <a href="#calibration">Calibration</a>
+    <a href="#chassis">Chassis</a>
+    <a href="#driving">Driving</a>
+    <a href="#telemetry">Telemetry</a>
+    <a href="#pros-adapters">PROS Adapters</a>
+  </div>
+
+  <h3>How it works</h3>
+  <p>Pathfinder tracks a 6-DOF state (pose + body-frame velocity) through dead reckoning, an Extended Kalman Filter, or Monte Carlo localization. Autonomous verbs like <code>moveTo</code>, <code>moveToPose</code>, and <code>follow</code> run synchronous control loops (PID + feedforward + motion profiling) at ~100 Hz. Every controller is drift-aware &mdash; the cross-track regulator predicts lateral drift from body velocity and compensates in real time. Sensor configuration is declarative via a builder API; PROS types are confined to adapter headers, keeping all math host-testable.</p>
 </section>
 
 <!-- ============================================================ -->
@@ -172,7 +143,7 @@ a.normalize_signed();      // 10
 auto delta = shortest_angle(from, to);  // signed diff in (-pi, pi]</code></pre>
 
   <h3><code>Bot</code></h3>
-  <p>Describes the robot&rsquo;s geometry: footprint, origin corner, and named points.</p>
+  <p>Describes the robot's geometry: footprint, origin corner, and named points.</p>
 <pre><code>auto bot = pathfinder::Bot{}
     .footprint(15.0, 14.5)
     .origin(pathfinder::Corner::BackLeft)
@@ -205,7 +176,7 @@ auto delta = shortest_angle(from, to);  // signed diff in (-pi, pi]</code></pre>
     <tr><td><code>ILandmark</code></td><td>Landmark sensor (poll returns optional LandmarkObservation)</td></tr>
   </table>
 
-  <h3>User-facing config structs</h3>
+  <h3>Config structs</h3>
 
   <h4><code>TrackingWheel</code></h4>
   <table class="config-table">
@@ -312,7 +283,7 @@ chassis.moveTo({0, 24}, pathfinder::MoveOpts{ .reverse = true }); // drive backw
   <h3><code>Chassis::moveToPose</code> &mdash; drive to a pose (Boomerang)</h3>
 <pre><code>chassis.moveToPose({48, 12, pathfinder::Angle::degrees(90)});
 chassis.moveToPose(target, pathfinder::MoveOpts{ .lead = 0.5, .reverse = false });</code></pre>
-  <p>Boomerang controller: drives toward a &ldquo;carrot&rdquo; projected beyond the target, then turns to the target heading. <code>lead</code> controls how far the carrot projects (0.3 default; higher = earlier turn).</p>
+  <p>Boomerang controller: drives toward a "carrot" projected beyond the target, then turns to the target heading. <code>lead</code> controls how far the carrot projects (0.3 default; higher = earlier turn).</p>
 
   <h3><code>Chassis::follow</code> &mdash; spline path with pure pursuit</h3>
 <pre><code>// Simple Vector2 waypoints
@@ -437,7 +408,7 @@ if (result.converged) {
 }</code></pre>
 
   <h3><code>AutoPid</code></h3>
-  <p>Open-loop step-response system ID &rarr; first-order-plus-dead-time (FOPDT) model fit &rarr; IMC PID gain synthesis &rarr; closed-loop verification.</p>
+  <p>Open-loop step-response system ID → first-order-plus-dead-time (FOPDT) model fit → IMC PID gain synthesis → closed-loop verification.</p>
 <pre><code>auto tuner = pathfinder::calibration::AutoPid(chassis);
 auto [lateral, angular] = tuner.tuneBoth();
 if (lateral.converged) {
@@ -547,7 +518,7 @@ chassis.set_telemetry_sink([](std::string_view line) {
 <!-- ============================================================ -->
 <section id="pros-adapters">
   <h2>PROS Adapters</h2>
-  <p>All PROS types are wrapped behind Pathfinder&rsquo;s abstract interfaces in <code>namespace pathfinder::pros_v5</code>. Include <code>"pathfinder/pros/all.hpp"</code> for the full suite.</p>
+  <p>All PROS types are wrapped behind Pathfinder's abstract interfaces in <code>namespace pathfinder::pros_v5</code>. Include <code>"pathfinder/pros/all.hpp"</code> for the full suite.</p>
 
   <table>
     <tr><th>Factory</th><th>Returns</th><th>Wraps</th></tr>
@@ -558,7 +529,7 @@ chassis.set_telemetry_sink([](std::string_view line) {
     <tr><td><code>gps(port)</code></td><td><code>shared_ptr&lt;ILandmark&gt;</code></td><td><code>pros::Gps</code></td></tr>
     <tr><td><code>motor_group({ports}, reversed)</code></td><td><code>MotorGroup</code></td><td>Multi-motor side (uniform reversal)</td></tr>
     <tr><td><code>motor_group_mixed({{port, rev}, ...})</code></td><td><code>MotorGroup</code></td><td>Multi-motor side (per-motor reversal)</td></tr>
-    <tr><td><code>make_axis_reader(controller)</code></td><td><code>function&lt;double(JoystickAxis)&gt;</code></td><td>PROS controller &rarr; Pathfinder axis poller</td></tr>
+    <tr><td><code>make_axis_reader(controller)</code></td><td><code>function&lt;double(JoystickAxis)&gt;</code></td><td>PROS controller → Pathfinder axis poller</td></tr>
   </table>
 
 <pre><code>using namespace pathfinder::pros_v5;
@@ -569,9 +540,22 @@ auto left_encoder = rotation_sensor(8);</code></pre>
 </section>
 
 <!-- ============================================================ -->
+<section id="reference">
+  <h2>API Reference</h2>
+  <div class="toc-grid">
+    <a href="#drive-config">Drive Config</a>
+    <a href="#move-opts">Move Options</a>
+    <a href="#follow-opts">Follow Options</a>
+    <a href="#turn-opts">Turn Options</a>
+    <a href="#controller-stack">Controller Stack</a>
+    <a href="#localization-tiers">Localization Tiers</a>
+    <a href="#opcontrol-modes">Opcontrol Modes</a>
+  </div>
+</section>
+
+<!-- ============================================================ -->
 <section id="drive-config">
   <h2>Drive Configuration</h2>
-
   <table class="config-table">
     <tr><th>Field</th><th>Default</th><th>Description</th></tr>
     <tr><td><code>track_width_in</code></td><td><code>12.0</code></td><td>Center-to-center track width (inches)</td></tr>
@@ -589,7 +573,6 @@ auto left_encoder = rotation_sensor(8);</code></pre>
 <section id="move-opts">
   <h2>Move Options</h2>
   <p>Per-call options for <code>moveTo</code> and <code>moveToPose</code>.</p>
-
   <table class="config-table">
     <tr><th>Field</th><th>Default</th><th>Description</th></tr>
     <tr><td><code>timeout_ms</code></td><td><code>5000.0</code></td><td>Max time before forced exit</td></tr>
@@ -610,7 +593,6 @@ auto left_encoder = rotation_sensor(8);</code></pre>
 <section id="follow-opts">
   <h2>Follow Options</h2>
   <p>Per-call options for <code>follow</code>.</p>
-
   <table class="config-table">
     <tr><th>Field</th><th>Default</th><th>Description</th></tr>
     <tr><td><code>timeout_ms</code></td><td><code>5000.0</code></td><td>Max time before forced exit</td></tr>
@@ -630,7 +612,6 @@ auto left_encoder = rotation_sensor(8);</code></pre>
 <section id="turn-opts">
   <h2>Turn Options</h2>
   <p>Per-call options for <code>turnTo</code> and <code>swingTo</code>.</p>
-
   <table class="config-table">
     <tr><th>Field</th><th>Default</th><th>Description</th></tr>
     <tr><td><code>timeout_ms</code></td><td><code>2000.0</code></td><td>Max time before forced exit</td></tr>
@@ -676,7 +657,7 @@ chassis.setController(ControllerAxis::Angular, ControllerStack{
   <h2>Localization Tiers</h2>
   <p>Choose localization via a tag type passed to the <code>Chassis</code> constructor.</p>
 
-<pre><code>// Tier 1: Dead reckoning (default — no config needed)
+<pre><code>// Tier 1: Dead reckoning (default)
 pathfinder::Chassis chassis(l, r, bot, sens, pathfinder::Localization::DeadReckoning, drive);
 
 // Tier 2: Extended Kalman Filter
@@ -695,7 +676,7 @@ pathfinder::Chassis chassis(l, r, bot, sens,
 
   <table>
     <tr><th>Mode</th><th>Input</th><th>Description</th></tr>
-    <tr><td><code>TankDrive</code></td><td>Left, right speeds [-1, 1]</td><td>Raw per-side control</td></tr>
+    <tr><td><code>TankDrive</code></td><td>Left, right [-1, 1]</td><td>Raw per-side control</td></tr>
     <tr><td><code>ArcadeDrive</code></td><td>Throttle, turn [-1, 1]</td><td>Forward + rotate</td></tr>
     <tr><td><code>CurvatureDrive</code></td><td>Throttle, curvature [-1, 1]</td><td>Cheesy drive (curvature-based)</td></tr>
     <tr><td><code>FlightStyle::Rate</code></td><td>Throttle, yaw rate (deg/s)</td><td>Gyro-stabilized rate-mode flight</td></tr>
@@ -721,6 +702,6 @@ chassis.opcontrol(pathfinder::FlightStyle::Rate{
 }, [](auto axis) { return controller_get_analog(axis); }, []{ return false; });</code></pre>
 </section>
 
-</main>
+</div>
 </body>
 </html>
