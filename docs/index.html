@@ -8,24 +8,43 @@
 </head>
 <body>
 
-<header class="site-header">
-  <div class="header-inner">
-    <a href="#" class="header-logo"><span>path</span>finder</a>
-    <nav class="header-nav">
-      <a href="#overview">Overview</a>
-      <a href="#quick-start">Quick Start</a>
-      <a href="#install">Install</a>
-      <a href="#modules">Modules</a>
-      <a href="#reference">API Ref</a>
-    </nav>
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <a href="#"><span>path</span>finder</a>
+    <div class="version">v0.1 &mdash; PROS 4.2+</div>
   </div>
-</header>
+  <nav class="sidebar-nav">
+    <a href="#overview">Overview</a>
+    <a href="#quick-start">Quick Start</a>
+    <a href="#install">Install</a>
 
-<div class="container">
+    <div class="section-label">Modules</div>
+    <a href="#geometry">Geometry</a>
+    <a href="#sensors">Sensors</a>
+    <a href="#controllers">Controllers</a>
+    <a href="#autonomous">Autonomous</a>
+    <a href="#odometry">Odometry</a>
+    <a href="#calibration">Calibration</a>
+    <a href="#chassis">Chassis</a>
+    <a href="#driving">Driving</a>
+    <a href="#telemetry">Telemetry</a>
+    <a href="#pros-adapters">PROS Adapters</a>
 
-<!-- ============================================================ -->
+    <div class="section-label">Reference</div>
+    <a href="#drive-config">Drive Config</a>
+    <a href="#move-opts">Move Options</a>
+    <a href="#follow-opts">Follow Options</a>
+    <a href="#turn-opts">Turn Options</a>
+    <a href="#controller-stack">Controller Stack</a>
+    <a href="#localization-tiers">Localization Tiers</a>
+    <a href="#opcontrol-modes">Opcontrol Modes</a>
+  </nav>
+</aside>
+
+<main class="content">
+
 <section id="overview" class="hero">
-  <h1><span>path</span>finder</h1>
+  <h2><span>path</span>finder</h2>
   <p class="subtitle">Movement library for VEX V5 robots running PROS &mdash; pose tracking, calibration, controllers, and autonomous primitives. Same family as LemLib and EZ-Template.</p>
   <div class="meta">
     <span class="highlight">C++20</span>
@@ -34,6 +53,10 @@
     <span>Header-only</span>
     <span>45 tests</span>
   </div>
+</section>
+
+<section>
+  <p>Pathfinder tracks a 6-DOF state (pose + body-frame velocity) through dead reckoning, an Extended Kalman Filter, or Monte Carlo localization. Autonomous verbs like <code>moveTo</code>, <code>moveToPose</code>, and <code>follow</code> run synchronous control loops (PID + feedforward + motion profiling) at ~100 Hz. Every controller is drift-aware &mdash; the cross-track regulator predicts lateral drift from body velocity and compensates in real time. Sensor configuration is declarative via a builder API; PROS types are confined to adapter headers, keeping all math host-testable.</p>
 </section>
 
 <!-- ============================================================ -->
@@ -98,26 +121,6 @@ pros mu                         // build + upload</code></pre>
 </section>
 
 <!-- ============================================================ -->
-<section id="modules">
-  <h2>Modules</h2>
-  <div class="toc-grid">
-    <a href="#geometry">Geometry</a>
-    <a href="#sensors">Sensors</a>
-    <a href="#controllers">Controllers</a>
-    <a href="#autonomous">Autonomous</a>
-    <a href="#odometry">Odometry</a>
-    <a href="#calibration">Calibration</a>
-    <a href="#chassis">Chassis</a>
-    <a href="#driving">Driving</a>
-    <a href="#telemetry">Telemetry</a>
-    <a href="#pros-adapters">PROS Adapters</a>
-  </div>
-
-  <h3>How it works</h3>
-  <p>Pathfinder tracks a 6-DOF state (pose + body-frame velocity) through dead reckoning, an Extended Kalman Filter, or Monte Carlo localization. Autonomous verbs like <code>moveTo</code>, <code>moveToPose</code>, and <code>follow</code> run synchronous control loops (PID + feedforward + motion profiling) at ~100 Hz. Every controller is drift-aware &mdash; the cross-track regulator predicts lateral drift from body velocity and compensates in real time. Sensor configuration is declarative via a builder API; PROS types are confined to adapter headers, keeping all math host-testable.</p>
-</section>
-
-<!-- ============================================================ -->
 <section id="geometry">
   <h2>Geometry</h2>
   <p>2D math primitives &mdash; all hand-rolled, no external dependencies.</p>
@@ -156,17 +159,17 @@ auto delta = shortest_angle(from, to);  // signed diff in (-pi, pi]</code></pre>
   <h3>Other geometry types</h3>
   <table>
     <tr><th>Type</th><th>Purpose</th></tr>
-    <tr><td><code>Matrix3</code></td><td>3&times;3 matrix for pose covariance (determinant, inverse, transpose)</td></tr>
+    <tr><td><code>Matrix3</code></td><td>3&times;3 matrix for pose covariance</td></tr>
     <tr><td><code>Matrix6</code></td><td>6&times;6 matrix for full EKF state covariance</td></tr>
-    <tr><td><code>Footprint</code></td><td>Bot footprint (length &times; width). Generates corner coordinates, point-in-rect test.</td></tr>
-    <tr><td><code>Vector3</code></td><td>3D vector extension (x, y, z)</td></tr>
+    <tr><td><code>Footprint</code></td><td>Bot footprint (length &times; width). Corners, point-in-rect test.</td></tr>
+    <tr><td><code>Vector3</code></td><td>3D vector extension</td></tr>
   </table>
 </section>
 
 <!-- ============================================================ -->
 <section id="sensors">
   <h2>Sensors</h2>
-  <p>All sensors are abstract behind <code>I*</code> interfaces. Pathfinder uses these internally; PROS types never leak beyond <code>sensors/</code> except through adapters.</p>
+  <p>All sensors are abstract behind <code>I*</code> interfaces. PROS types never leak beyond <code>sensors/</code> except through adapters.</p>
 
   <table>
     <tr><th>Interface</th><th>Purpose</th></tr>
@@ -195,7 +198,7 @@ auto delta = shortest_angle(from, to);  // signed diff in (-pi, pi]</code></pre>
   <table class="config-table">
     <tr><th>Field</th><th>Type / Default</th><th>Description</th></tr>
     <tr><td><code>sensor</code></td><td><code>shared_ptr&lt;IImu&gt;</code></td><td>IMU sensor</td></tr>
-    <tr><td><code>mounting</code></td><td><code>ImuMounting</code></td><td>8 mounting orientations (ZUp_XForward, etc.)</td></tr>
+    <tr><td><code>mounting</code></td><td><code>ImuMounting</code></td><td>8 mounting orientations</td></tr>
     <tr><td><code>offset_xy_in</code></td><td><code>{0, 0}</code></td><td>Position from bot center (inches)</td></tr>
     <tr><td><code>offset_z_in</code></td><td><code>0.0</code></td><td>Vertical offset</td></tr>
     <tr><td><code>gyro_bias_dps</code></td><td><code>0.0</code></td><td>Static gyro bias (deg/s)</td></tr>
@@ -240,7 +243,6 @@ pid.reset();  // clear integral + derivative state</code></pre>
 double output = ff.compute(target_velocity, target_acceleration);</code></pre>
 
   <h3><code>ExitConditions</code></h3>
-  <p>Multi-threshold exit with per-band timeouts.</p>
 <pre><code>pathfinder::ExitConditions::Spec spec{
     .small_error = 0.5,
     .small_error_timeout_ms = 200,
@@ -254,10 +256,8 @@ if (exit.is_done()) { /* settled */ }</code></pre>
 
   <h3><code>MotionProfile</code></h3>
 <pre><code>pathfinder::motion_profile::Trapezoidal profile{
-    .v_max = 24.0,
-    .a_max = 12.0,
-    .start_pos = 0.0,
-    .end_pos = 48.0,
+    .v_max = 24.0, .a_max = 12.0,
+    .start_pos = 0.0, .end_pos = 48.0,
 };
 auto s = profile.sample(t);  // {position, velocity, acceleration}
 
@@ -278,12 +278,12 @@ double smoothed = limiter.update(target, dt_sec);</code></pre>
   <h3><code>Chassis::moveTo</code> &mdash; drive to a point</h3>
 <pre><code>chassis.moveTo({24, 0});                                         // drive 24" forward
 chassis.moveTo({0, 24}, pathfinder::MoveOpts{ .reverse = true }); // drive backward</code></pre>
-  <p>Uses <code>MoveToPoint</code> internally: along-track PID + cross-track PID + heading PID. Drift-aware: cross-track regulator factors in lateral body velocity.</p>
+  <p>Uses <code>MoveToPoint</code> internally: along-track PID + cross-track PID + heading PID. Cross-track regulator factors in lateral body velocity for drift prediction.</p>
 
   <h3><code>Chassis::moveToPose</code> &mdash; drive to a pose (Boomerang)</h3>
 <pre><code>chassis.moveToPose({48, 12, pathfinder::Angle::degrees(90)});
 chassis.moveToPose(target, pathfinder::MoveOpts{ .lead = 0.5, .reverse = false });</code></pre>
-  <p>Boomerang controller: drives toward a "carrot" projected beyond the target, then turns to the target heading. <code>lead</code> controls how far the carrot projects (0.3 default; higher = earlier turn).</p>
+  <p>Boomerang controller: drives toward a "carrot" projected beyond the target, then turns to the target heading. <code>lead</code> controls how far the carrot projects.</p>
 
   <h3><code>Chassis::follow</code> &mdash; spline path with pure pursuit</h3>
 <pre><code>// Simple Vector2 waypoints
@@ -295,34 +295,34 @@ chassis.follow({
     pathfinder::Waypoint{.position_x = 24, .position_y = 0,   .speed_cap_ips = 20},
     pathfinder::Waypoint{.position_x = 48, .position_y = 24,  .heading_deg = 90},
 });</code></pre>
-  <p>Waypoints define a centripetal Catmull-Rom spline, tracked via pure pursuit. Each waypoint supports:</p>
+  <p>Waypoints define a centripetal Catmull-Rom spline, tracked via pure pursuit. Each supports:</p>
   <table>
     <tr><th>Field</th><th>Description</th></tr>
     <tr><td><code>speed_cap_ips</code></td><td>Optional speed limit at this waypoint</td></tr>
-    <tr><td><code>heading_deg</code></td><td>Soft heading hint at this waypoint</td></tr>
-    <tr><td><code>on_arrive</code></td><td>Callback fired when the robot reaches this waypoint</td></tr>
-    <tr><td><code>must_pass_through</code></td><td>If false, the waypoint only influences the spline shape (default true)</td></tr>
+    <tr><td><code>heading_deg</code></td><td>Soft heading hint</td></tr>
+    <tr><td><code>on_arrive</code></td><td>Callback fired at waypoint arrival</td></tr>
+    <tr><td><code>must_pass_through</code></td><td>If false, waypoint only influences spline shape</td></tr>
   </table>
 
   <h3><code>Chassis::turnTo</code></h3>
-<pre><code>chassis.turnTo(90);                                   // absolute heading
-chassis.turnTo({48, 0});                              // face a point
+<pre><code>chassis.turnTo(90);
+chassis.turnTo({48, 0});
 chassis.turnTo(90, pathfinder::TurnOpts{ .direction = pathfinder::Direction::CW });</code></pre>
 
   <h3><code>Chassis::swingTo</code></h3>
-<pre><code>chassis.swingTo(90, pathfinder::Side::Left);          // pivot on left side
-chassis.swingTo({48, 0}, pathfinder::Side::Right);    // face point, pivot on right</code></pre>
+<pre><code>chassis.swingTo(90, pathfinder::Side::Left);
+chassis.swingTo({48, 0}, pathfinder::Side::Right);</code></pre>
 
   <h3>Low-level autonomous classes</h3>
   <table>
     <tr><th>Class</th><th>Purpose</th></tr>
     <tr><td><code>MoveToPoint</code></td><td>Linear move-to-point (along/cross/heading PID)</td></tr>
     <tr><td><code>Boomerang</code></td><td>Move-to-pose with carrot projection</td></tr>
-    <tr><td><code>PurePursuit</code></td><td>Pure pursuit path follower over a Catmull-Rom spline</td></tr>
+    <tr><td><code>PurePursuit</code></td><td>Pure pursuit path follower over Catmull-Rom spline</td></tr>
     <tr><td><code>TurnTo</code></td><td>Turn to heading controller</td></tr>
     <tr><td><code>TurnToPoint</code></td><td>Turn to face a point controller</td></tr>
-    <tr><td><code>DriveCommand</code></td><td>Output struct: {forward_velocity_ips, angular_velocity_dps, done}</td></tr>
-    <tr><td><code>catmull_rom::Path</code></td><td>Centripetal Catmull-Rom spline (sample by t or arclength)</td></tr>
+    <tr><td><code>DriveCommand</code></td><td>Output struct: forward_velocity_ips, angular_velocity_dps, done</td></tr>
+    <tr><td><code>catmull_rom::Path</code></td><td>Centripetal Catmull-Rom spline</td></tr>
   </table>
 </section>
 
@@ -333,9 +333,9 @@ chassis.swingTo({48, 0}, pathfinder::Side::Right);    // face point, pivot on ri
 
   <table>
     <tr><th>Tier</th><th>Class</th><th>When to use</th></tr>
-    <tr><td>1</td><td><code>DeadReckoning</code></td><td>Default &mdash; good enough for 99% of matches. Wheel + IMU integration.</td></tr>
-    <tr><td>2</td><td><code>Ekf</code></td><td>When you have GPS or landmark inputs. Extended Kalman Filter on full 6-DOF state.</td></tr>
-    <tr><td>3</td><td><code>Mcl</code></td><td>Global localization with a field map. Monte Carlo (particle filter).</td></tr>
+    <tr><td>1</td><td><code>DeadReckoning</code></td><td>Default. Wheel + IMU integration &mdash; good for most matches.</td></tr>
+    <tr><td>2</td><td><code>Ekf</code></td><td>When you have GPS or landmark inputs. EKF on full 6-DOF state.</td></tr>
+    <tr><td>3</td><td><code>Mcl</code></td><td>Global localization with a field map. Monte Carlo particle filter.</td></tr>
   </table>
 
   <h3><code>DeadReckoning</code></h3>
@@ -348,7 +348,7 @@ chassis.swingTo({48, 0}, pathfinder::Side::Right);    // face point, pivot on ri
 pathfinder::DeadReckoning dr(config, initial_pose);
 dr.update(par_delta_in, perp_delta_in, heading_rad, dt_sec);
 auto pose = dr.pose();
-auto vel  = dr.body_velocity();  // {v_x, v_y, omega} in body frame</code></pre>
+auto vel  = dr.body_velocity();  // {v_x, v_y, omega}</code></pre>
 
   <h3><code>Ekf</code></h3>
 <pre><code>pathfinder::Ekf::Config config{
@@ -362,36 +362,32 @@ pathfinder::Ekf ekf(config, initial_pose);
 ekf.predict(par_delta, perp_delta, heading, dt);
 ekf.update_vex_gps(gps_pose, sigma_xy_in, sigma_heading_rad);
 ekf.update_imu_heading(heading_bot_frame, sigma_rad);
-auto cov = ekf.pose_covariance();          // 3x3 pose covariance
-auto full = ekf.full_covariance();         // 6x6 state covariance</code></pre>
+auto cov = ekf.pose_covariance();          // 3x3
+auto full = ekf.full_covariance();         // 6x6</code></pre>
 
   <h3><code>Mcl</code></h3>
 <pre><code>auto field = pathfinder::FieldMap::default_perimeter();
 pathfinder::Mcl::Config config{
-    .field_map = field,
-    .particle_count = 300,
-    .process_sigma_xy_in = 0.05,
-    .ess_resample_threshold = 0.5,
+    .field_map = field, .particle_count = 300,
+    .process_sigma_xy_in = 0.05, .ess_resample_threshold = 0.5,
 };
 pathfinder::Mcl mcl(config, initial_pose);
 mcl.predict(forward_in, lateral_in, heading_delta_rad);
 mcl.update_distance(sensors);
-mcl.update_landmarks(sensors);
-for (auto& p : mcl.particles()) { /* pose + weight */ }</code></pre>
+mcl.update_landmarks(sensors);</code></pre>
 
   <h3><code>FieldMap</code></h3>
 <pre><code>auto field = pathfinder::FieldMap{};            // 144x144" default
-field.add_rect_obstacle(12, 12, 24, 24);        // center square
+field.add_rect_obstacle(12, 12, 24, 24);
 field.add_circle_obstacle({-24, 0}, 6);
 double dist = field.cast_ray(origin, dir_rad, max_range);  // DDA ray-cast
-field.add_landmark("goal", {{24, 0}, Angle::degrees(0)});
-auto map = pathfinder::FieldMap::load_from_file("field.json");</code></pre>
+field.add_landmark("goal", {{24, 0}, Angle::degrees(0)});</code></pre>
 
   <h3><code>BodyVelocity</code></h3>
 <pre><code>struct BodyVelocity {
-    double v_x_ips;    // Forward velocity in body frame (in/sec)
-    double v_y_ips;    // Lateral velocity in body frame (in/sec)
-    double omega_dps;  // Angular velocity (deg/sec)
+    double v_x_ips;    // Forward (body frame, in/sec)
+    double v_y_ips;    // Lateral (body frame, in/sec)
+    double omega_dps;  // Angular (deg/sec)
 };</code></pre>
 </section>
 
@@ -400,24 +396,19 @@ auto map = pathfinder::FieldMap::load_from_file("field.json");</code></pre>
   <h2>Calibration</h2>
 
   <h3><code>WheelFinder</code></h3>
-  <p>Find tracking-wheel offsets by pinning bot corners and rotating in place. Runs 4 pivots (one per corner) and aggregates estimates.</p>
+  <p>Find tracking-wheel offsets by pinning bot corners and rotating. Runs 4 pivots, aggregates estimates.</p>
 <pre><code>auto finder = pathfinder::calibration::WheelFinder(chassis);
-auto result = finder.run_all_corners();     // blocks, no motor control needed
-if (result.converged) {
-    // result has per-wheel mean + stddev offsets
-}</code></pre>
+auto result = finder.run_all_corners();
+if (result.converged) { /* per-wheel mean + stddev offsets */ }</code></pre>
 
   <h3><code>AutoPid</code></h3>
-  <p>Open-loop step-response system ID → first-order-plus-dead-time (FOPDT) model fit → IMC PID gain synthesis → closed-loop verification.</p>
+  <p>Step-response system ID → FOPDT model fit → IMC PID synthesis → closed-loop verification.</p>
 <pre><code>auto tuner = pathfinder::calibration::AutoPid(chassis);
 auto [lateral, angular] = tuner.tuneBoth();
-if (lateral.converged) {
-    // lateral.gains.kP, .kI, .kD are ready
-    // lateral.model.K, .tau, .L hold the FOPDT fit
-}</code></pre>
+if (lateral.converged) { /* lateral.gains.kP, .kI, .kD ready */ }</code></pre>
 
   <h3><code>DriftCoeff</code></h3>
-  <p>Auto-measure lateral friction coefficient &mu;. Accelerates forward, rotates to induce lateral drift, coasts, and fits an exponential decay to the lateral velocity trace.</p>
+  <p>Measures lateral friction coefficient &mu;. Accelerates, rotates to induce drift, coasts, fits exponential decay.</p>
 <pre><code>auto coeff = pathfinder::calibration::DriftCoeff(chassis);
 auto r = coeff.measure();     // r.mu_per_sec, r.converged</code></pre>
 </section>
@@ -425,14 +416,11 @@ auto r = coeff.measure();     // r.mu_per_sec, r.converged</code></pre>
 <!-- ============================================================ -->
 <section id="chassis">
   <h2>Chassis</h2>
-  <p>The <code>Chassis</code> class is the central integration point. It owns the drivetrain, sensors, localization estimator, controller stacks, and telemetry sink.</p>
+  <p>The central integration point. Owns drivetrain, sensors, localization estimator, controller stacks, and telemetry.</p>
 
   <h3>Construction</h3>
 <pre><code>auto chassis = pathfinder::Chassis(
-    left_motor_group,
-    right_motor_group,
-    bot_def,
-    sensors,
+    left_motor_group, right_motor_group, bot_def, sensors,
     pathfinder::Localization::DeadReckoning,  // or Ekf / Mcl{...}
     drive_config
 );</code></pre>
@@ -441,7 +429,7 @@ auto r = coeff.measure();     // r.mu_per_sec, r.converged</code></pre>
 <pre><code>chassis.calibrate();                           // wait for IMUs (5s timeout)
 chassis.setPose(0, 0, 90);                     // teleport pose
 auto pose = chassis.getPose();                 // Pose2
-auto cov  = chassis.getPoseCovariance();       // Matrix3 (zero for DR)
+auto cov  = chassis.getPoseCovariance();       // Matrix3
 auto vel  = chassis.getBodyVelocity();         // BodyVelocity</code></pre>
 
   <h3>Async stubs (v0.1 throws)</h3>
@@ -449,18 +437,15 @@ auto vel  = chassis.getBodyVelocity();         // BodyVelocity</code></pre>
 chassis.waitUntilDone();   // throws runtime_error
 chassis.cancelMotion();    // best-effort zero motors (safe)</code></pre>
 
-  <h3>Direct motor control</h3>
-<pre><code>chassis.applyVoltage(6000, 6000);  // raw per-side mV (for calibration utils)</code></pre>
-
   <h3>Inspection</h3>
 <pre><code>chassis.bot().point("intake");       // NamedPoint
 chassis.drive().track_width_in;      // Drive fields
 chassis.sensors().tracking_wheels(); // sensor list
-chassis.active_verb();               // current motion verb name
+chassis.active_verb();               // current motion verb
 chassis.last_left_voltage_mv();      // last commanded mV</code></pre>
 
   <h3>Testing hook</h3>
-<pre><code>auto result = chassis.tick(dt_sec);  // full sensor-odom-motor iteration
+<pre><code>auto result = chassis.tick(dt_sec);  // sensor-odom-motor iteration
 // result.pose, result.cmd, result.done</code></pre>
 </section>
 
@@ -469,7 +454,6 @@ chassis.last_left_voltage_mv();      // last commanded mV</code></pre>
   <h2>Driving</h2>
 
   <h3><code>MotorGroup</code></h3>
-  <p>Aggregate of motors driven as a unit. One per drivetrain side.</p>
 <pre><code>auto left = pathfinder::MotorGroup{
     pathfinder::pros_v5::motor(1, true),
     pathfinder::pros_v5::motor(2, true),
@@ -487,9 +471,9 @@ left.set_brake_mode(pathfinder::BrakeMode::Hold);</code></pre>
   </table>
 
   <h3>Host mocks</h3>
-<pre><code>auto fake_left = std::make_shared&lt;pathfinder::FakeMotor&gt;();
-fake_left->set_position(10.0);
-auto group = pathfinder::MotorGroup{fake_left};
+<pre><code>auto fake = std::make_shared&lt;pathfinder::FakeMotor&gt;();
+fake->set_position(10.0);
+auto group = pathfinder::MotorGroup{fake};
 group.average_position_revolutions();  // 10.0</code></pre>
 </section>
 
@@ -504,53 +488,41 @@ chassis.set_telemetry_sink([](std::string_view line) {
 });
 
 // Format:
-// PFTLM v1 t=1234 pose=(12.0,5.0,90.0) v_body=(24.0,-1.2,0.5) ctrl=moveTo target=(24.0,0.0,90.0) along=2.3 cross=0.1 left_mv=6000 right_mv=6200</code></pre>
+// PFTLM v1 t=1234 pose=(12.0,5.0,90.0) v_body=(24.0,-1.2,0.5)
+//   ctrl=moveTo target=(24.0,0.0,90.0) along=2.3 cross=0.1
+//   left_mv=6000 right_mv=6200</code></pre>
 
   <table>
     <tr><th>Method</th><th>Purpose</th></tr>
     <tr><td><code>.set_sink(fn)</code></td><td>Set void(string_view) callback</td></tr>
-    <tr><td><code>.set_enabled(bool)</code></td><td>Toggle telemetry streaming</td></tr>
-    <tr><td><code>.tick(record)</code></td><td>Render + emit one record, returns formatted line</td></tr>
-    <tr><td><code>Telemetry::format_record(r)</code></td><td>Static formatter (no sink needed)</td></tr>
+    <tr><td><code>.set_enabled(bool)</code></td><td>Toggle streaming</td></tr>
+    <tr><td><code>.tick(record)</code></td><td>Render + emit one record</td></tr>
+    <tr><td><code>Telemetry::format_record(r)</code></td><td>Static formatter</td></tr>
   </table>
 </section>
 
 <!-- ============================================================ -->
 <section id="pros-adapters">
   <h2>PROS Adapters</h2>
-  <p>All PROS types are wrapped behind Pathfinder's abstract interfaces in <code>namespace pathfinder::pros_v5</code>. Include <code>"pathfinder/pros/all.hpp"</code> for the full suite.</p>
+  <p>All PROS types wrapped behind Pathfinder interfaces in <code>namespace pathfinder::pros_v5</code>.</p>
 
   <table>
     <tr><th>Factory</th><th>Returns</th><th>Wraps</th></tr>
-    <tr><td><code>motor(port, reversed=false)</code></td><td><code>shared_ptr&lt;IMotor&gt;</code></td><td><code>pros::Motor</code></td></tr>
-    <tr><td><code>rotation_sensor(port, reversed=false)</code></td><td><code>shared_ptr&lt;IRotation&gt;</code></td><td><code>pros::Rotation</code></td></tr>
+    <tr><td><code>motor(port, reversed)</code></td><td><code>shared_ptr&lt;IMotor&gt;</code></td><td><code>pros::Motor</code></td></tr>
+    <tr><td><code>rotation_sensor(port, reversed)</code></td><td><code>shared_ptr&lt;IRotation&gt;</code></td><td><code>pros::Rotation</code></td></tr>
     <tr><td><code>imu(port)</code></td><td><code>shared_ptr&lt;IImu&gt;</code></td><td><code>pros::Imu</code></td></tr>
     <tr><td><code>distance_sensor(port)</code></td><td><code>shared_ptr&lt;IDistance&gt;</code></td><td><code>pros::Distance</code></td></tr>
     <tr><td><code>gps(port)</code></td><td><code>shared_ptr&lt;ILandmark&gt;</code></td><td><code>pros::Gps</code></td></tr>
-    <tr><td><code>motor_group({ports}, reversed)</code></td><td><code>MotorGroup</code></td><td>Multi-motor side (uniform reversal)</td></tr>
-    <tr><td><code>motor_group_mixed({{port, rev}, ...})</code></td><td><code>MotorGroup</code></td><td>Multi-motor side (per-motor reversal)</td></tr>
-    <tr><td><code>make_axis_reader(controller)</code></td><td><code>function&lt;double(JoystickAxis)&gt;</code></td><td>PROS controller → Pathfinder axis poller</td></tr>
+    <tr><td><code>motor_group({ports}, rev)</code></td><td><code>MotorGroup</code></td><td>Multi-motor side</td></tr>
+    <tr><td><code>motor_group_mixed({{p, r}, ...})</code></td><td><code>MotorGroup</code></td><td>Per-motor reversal</td></tr>
+    <tr><td><code>make_axis_reader(controller)</code></td><td><code>function&lt;double(axis)&gt;</code></td><td>Controller → axis poller</td></tr>
   </table>
 
 <pre><code>using namespace pathfinder::pros_v5;
-auto left  = motor_group({-1, -2, -3}, true);   // ports 1,2,3 reversed
+auto left  = motor_group({-1, -2, -3}, true);
 auto right = motor_group({4, 5, 6}, false);
 auto imu_s = imu(7);
-auto left_encoder = rotation_sensor(8);</code></pre>
-</section>
-
-<!-- ============================================================ -->
-<section id="reference">
-  <h2>API Reference</h2>
-  <div class="toc-grid">
-    <a href="#drive-config">Drive Config</a>
-    <a href="#move-opts">Move Options</a>
-    <a href="#follow-opts">Follow Options</a>
-    <a href="#turn-opts">Turn Options</a>
-    <a href="#controller-stack">Controller Stack</a>
-    <a href="#localization-tiers">Localization Tiers</a>
-    <a href="#opcontrol-modes">Opcontrol Modes</a>
-  </div>
+auto encoder = rotation_sensor(8);</code></pre>
 </section>
 
 <!-- ============================================================ -->
@@ -560,32 +532,32 @@ auto left_encoder = rotation_sensor(8);</code></pre>
     <tr><th>Field</th><th>Default</th><th>Description</th></tr>
     <tr><td><code>track_width_in</code></td><td><code>12.0</code></td><td>Center-to-center track width (inches)</td></tr>
     <tr><td><code>wheel_diameter_in</code></td><td><code>3.25</code></td><td>Drive wheel diameter (inches)</td></tr>
-    <tr><td><code>gear_ratio</code></td><td><code>36/84</code></td><td>Gear ratio (output revs / input revs)</td></tr>
-    <tr><td><code>lateral_friction_coefficient</code></td><td><code>5.0</code></td><td>Lateral friction &mu; (used in drift model)</td></tr>
-    <tr><td><code>max_forward_ips</code></td><td><code>60.0</code></td><td>Max forward speed (in/sec)</td></tr>
-    <tr><td><code>max_angular_dps</code></td><td><code>270.0</code></td><td>Max angular speed (deg/sec)</td></tr>
-    <tr><td><code>max_forward_voltage_mv</code></td><td><code>12000.0</code></td><td>Max motor voltage (mV)</td></tr>
-    <tr><td><code>voltage_per_ips</code></td><td><code>0.0</code></td><td>Feedforward voltage per in/sec (0 = use proportional model)</td></tr>
+    <tr><td><code>gear_ratio</code></td><td><code>36/84</code></td><td>Output revs / input revs</td></tr>
+    <tr><td><code>lateral_friction_coefficient</code></td><td><code>5.0</code></td><td>Lateral friction &mu;</td></tr>
+    <tr><td><code>max_forward_ips</code></td><td><code>60.0</code></td><td>Max forward speed</td></tr>
+    <tr><td><code>max_angular_dps</code></td><td><code>270.0</code></td><td>Max angular speed</td></tr>
+    <tr><td><code>max_forward_voltage_mv</code></td><td><code>12000.0</code></td><td>Max motor voltage</td></tr>
+    <tr><td><code>voltage_per_ips</code></td><td><code>0.0</code></td><td>Feedforward V/in/sec</td></tr>
   </table>
 </section>
 
 <!-- ============================================================ -->
 <section id="move-opts">
   <h2>Move Options</h2>
-  <p>Per-call options for <code>moveTo</code> and <code>moveToPose</code>.</p>
+  <p>Per-call options for <code>moveTo</code> / <code>moveToPose</code>.</p>
   <table class="config-table">
     <tr><th>Field</th><th>Default</th><th>Description</th></tr>
-    <tr><td><code>timeout_ms</code></td><td><code>5000.0</code></td><td>Max time before forced exit</td></tr>
+    <tr><td><code>timeout_ms</code></td><td><code>5000.0</code></td><td>Max time</td></tr>
     <tr><td><code>reverse</code></td><td><code>false</code></td><td>Drive backward</td></tr>
-    <tr><td><code>async</code></td><td><code>false</code></td><td>Non-blocking (throws in v0.1)</td></tr>
-    <tr><td><code>min_exit_speed_ips</code></td><td><code>0.0</code></td><td>Require speed below this threshold to exit</td></tr>
-    <tr><td><code>early_exit_in</code></td><td><code>0.0</code></td><td>Exit this far from target (tolerance)</td></tr>
-    <tr><td><code>lead</code></td><td><code>0.3</code></td><td>Carrot projection factor for Boomerang</td></tr>
-    <tr><td><code>lookahead_time_sec</code></td><td><code>0.10</code></td><td>Cross-track drift prediction horizon</td></tr>
-    <tr><td><code>along_track</code></td><td>optional</td><td>Override lateral PID gains</td></tr>
-    <tr><td><code>cross_track</code></td><td>optional</td><td>Override cross-track PID gains</td></tr>
-    <tr><td><code>heading</code></td><td>optional</td><td>Override heading PID gains</td></tr>
-    <tr><td><code>exit</code></td><td>optional</td><td>Override exit condition spec</td></tr>
+    <tr><td><code>async</code></td><td><code>false</code></td><td>Non-blocking (throws v0.1)</td></tr>
+    <tr><td><code>min_exit_speed_ips</code></td><td><code>0.0</code></td><td>Require speed below threshold</td></tr>
+    <tr><td><code>early_exit_in</code></td><td><code>0.0</code></td><td>Exit tolerance</td></tr>
+    <tr><td><code>lead</code></td><td><code>0.3</code></td><td>Boomerang carrot factor</td></tr>
+    <tr><td><code>lookahead_time_sec</code></td><td><code>0.10</code></td><td>Drift prediction horizon</td></tr>
+    <tr><td><code>along_track</code></td><td>optional</td><td>Override along-track PID</td></tr>
+    <tr><td><code>cross_track</code></td><td>optional</td><td>Override cross-track PID</td></tr>
+    <tr><td><code>heading</code></td><td>optional</td><td>Override heading PID</td></tr>
+    <tr><td><code>exit</code></td><td>optional</td><td>Override exit spec</td></tr>
   </table>
 </section>
 
@@ -595,77 +567,77 @@ auto left_encoder = rotation_sensor(8);</code></pre>
   <p>Per-call options for <code>follow</code>.</p>
   <table class="config-table">
     <tr><th>Field</th><th>Default</th><th>Description</th></tr>
-    <tr><td><code>timeout_ms</code></td><td><code>5000.0</code></td><td>Max time before forced exit</td></tr>
-    <tr><td><code>lookahead_in</code></td><td><code>12.0</code></td><td>Pure pursuit lookahead distance (inches)</td></tr>
-    <tr><td><code>path_tension</code></td><td><code>0.5</code></td><td>Catmull-Rom tension (0 = loose, 1 = tight)</td></tr>
+    <tr><td><code>timeout_ms</code></td><td><code>5000.0</code></td><td>Max time</td></tr>
+    <tr><td><code>lookahead_in</code></td><td><code>12.0</code></td><td>Pure pursuit lookahead</td></tr>
+    <tr><td><code>path_tension</code></td><td><code>0.5</code></td><td>Catmull-Rom tension</td></tr>
     <tr><td><code>reverse</code></td><td><code>false</code></td><td>Drive backward</td></tr>
-    <tr><td><code>async</code></td><td><code>false</code></td><td>Non-blocking (throws in v0.1)</td></tr>
-    <tr><td><code>min_exit_speed_ips</code></td><td><code>0.0</code></td><td>Require speed below threshold to exit</td></tr>
-    <tr><td><code>lookahead_time_sec</code></td><td><code>0.10</code></td><td>Cross-track drift prediction horizon</td></tr>
-    <tr><td><code>forward</code></td><td>optional</td><td>Override forward PID gains</td></tr>
-    <tr><td><code>heading</code></td><td>optional</td><td>Override heading PID gains</td></tr>
-    <tr><td><code>exit</code></td><td>optional</td><td>Override exit condition spec</td></tr>
+    <tr><td><code>async</code></td><td><code>false</code></td><td>Non-blocking (throws v0.1)</td></tr>
+    <tr><td><code>min_exit_speed_ips</code></td><td><code>0.0</code></td><td>Require speed below threshold</td></tr>
+    <tr><td><code>lookahead_time_sec</code></td><td><code>0.10</code></td><td>Drift prediction horizon</td></tr>
+    <tr><td><code>forward</code></td><td>optional</td><td>Override forward PID</td></tr>
+    <tr><td><code>heading</code></td><td>optional</td><td>Override heading PID</td></tr>
+    <tr><td><code>exit</code></td><td>optional</td><td>Override exit spec</td></tr>
   </table>
 </section>
 
 <!-- ============================================================ -->
 <section id="turn-opts">
   <h2>Turn Options</h2>
-  <p>Per-call options for <code>turnTo</code> and <code>swingTo</code>.</p>
+  <p>Per-call options for <code>turnTo</code> / <code>swingTo</code>.</p>
   <table class="config-table">
     <tr><th>Field</th><th>Default</th><th>Description</th></tr>
-    <tr><td><code>timeout_ms</code></td><td><code>2000.0</code></td><td>Max time before forced exit</td></tr>
-    <tr><td><code>async</code></td><td><code>false</code></td><td>Non-blocking (throws in v0.1)</td></tr>
-    <tr><td><code>direction</code></td><td><code>Auto</code></td><td>Turn direction: Auto, CW, or CCW</td></tr>
-    <tr><td><code>heading</code></td><td>optional</td><td>Override heading PID gains</td></tr>
-    <tr><td><code>exit</code></td><td>optional</td><td>Override exit condition spec</td></tr>
+    <tr><td><code>timeout_ms</code></td><td><code>2000.0</code></td><td>Max time</td></tr>
+    <tr><td><code>async</code></td><td><code>false</code></td><td>Non-blocking (throws v0.1)</td></tr>
+    <tr><td><code>direction</code></td><td><code>Auto</code></td><td>Auto, CW, or CCW</td></tr>
+    <tr><td><code>heading</code></td><td>optional</td><td>Override heading PID</td></tr>
+    <tr><td><code>exit</code></td><td>optional</td><td>Override exit spec</td></tr>
   </table>
 </section>
 
 <!-- ============================================================ -->
 <section id="controller-stack">
   <h2>Controller Stack</h2>
-  <p>Each axis (lateral, angular) has a full controller stack: feedback PID + feedforward + optional motion profile + slew limiter.</p>
+  <p>Each axis has a full stack: PID feedback + feedforward + optional motion profile + slew limiter.</p>
 
 <pre><code>using namespace pathfinder;
 
 chassis.setController(ControllerAxis::Lateral, ControllerStack{
     .feedback = Pid::Gains{ .kP = 1.2, .kD = 0.15 },
-    .ff       = FeedForward{ .kV = 0.18, .kA = 0.03, .kS = 0.0 },
+    .ff       = FeedForward{ .kV = 0.18, .kA = 0.03 },
     .profile  = motion_profile::Trapezoidal{ .v_max = 36.0, .a_max = 24.0 },
     .slew     = SlewSpec{ .max_rate_per_sec = 200.0 },
 });
 
 chassis.setController(ControllerAxis::Angular, ControllerStack{
     .feedback = Pid::Gains{ .kP = 2.5, .kD = 0.3 },
-    .ff       = FeedForward{ .kV = 0.10, .kA = 0.01, .kS = 0.0 },
+    .ff       = FeedForward{ .kV = 0.10, .kA = 0.01 },
     .slew     = SlewSpec{ .max_rate_per_sec = 400.0 },
 });</code></pre>
 
   <table class="config-table">
     <tr><th>Field</th><th>Default</th><th>Description</th></tr>
-    <tr><td><code>feedback</code></td><td><code>Pid::Gains{1.0, 0.0, 0.1}</code></td><td>PID feedback gains</td></tr>
-    <tr><td><code>ff</code></td><td><code>FeedForward{0.15, 0.02, 0.0}</code></td><td>Feedforward (kV, kA, kS)</td></tr>
-    <tr><td><code>profile</code></td><td>optional</td><td>Trapezoidal motion profile (position control)</td></tr>
-    <tr><td><code>s_profile</code></td><td>optional</td><td>S-curve motion profile (smooth, jerk-limited)</td></tr>
-    <tr><td><code>slew</code></td><td><code>SlewSpec{}</code></td><td>Rate-of-change limiter (0 = no limit)</td></tr>
+    <tr><td><code>feedback</code></td><td><code>Pid::Gains{1.0, 0.0, 0.1}</code></td><td>PID gains</td></tr>
+    <tr><td><code>ff</code></td><td><code>FeedForward{0.15, 0.02, 0.0}</code></td><td>kV, kA, kS</td></tr>
+    <tr><td><code>profile</code></td><td>optional</td><td>Trapezoidal profile</td></tr>
+    <tr><td><code>s_profile</code></td><td>optional</td><td>S-curve profile</td></tr>
+    <tr><td><code>slew</code></td><td><code>SlewSpec{}</code></td><td>Rate limiter</td></tr>
   </table>
 </section>
 
 <!-- ============================================================ -->
 <section id="localization-tiers">
   <h2>Localization Tiers</h2>
-  <p>Choose localization via a tag type passed to the <code>Chassis</code> constructor.</p>
-
 <pre><code>// Tier 1: Dead reckoning (default)
-pathfinder::Chassis chassis(l, r, bot, sens, pathfinder::Localization::DeadReckoning, drive);
+auto chassis = pathfinder::Chassis(l, r, bot, sens,
+    pathfinder::Localization::DeadReckoning, drive);
 
 // Tier 2: Extended Kalman Filter
-pathfinder::Chassis chassis(l, r, bot, sens, pathfinder::Localization::Ekf, drive);
+auto chassis = pathfinder::Chassis(l, r, bot, sens,
+    pathfinder::Localization::Ekf, drive);
 
 // Tier 3: Monte Carlo (particle filter)
 auto field = pathfinder::FieldMap::default_perimeter();
-pathfinder::Chassis chassis(l, r, bot, sens,
+auto chassis = pathfinder::Chassis(l, r, bot, sens,
     pathfinder::Localization::Mcl{ .field_map = field, .particles = 300 },
     drive);</code></pre>
 </section>
@@ -676,32 +648,28 @@ pathfinder::Chassis chassis(l, r, bot, sens,
 
   <table>
     <tr><th>Mode</th><th>Input</th><th>Description</th></tr>
-    <tr><td><code>TankDrive</code></td><td>Left, right [-1, 1]</td><td>Raw per-side control</td></tr>
+    <tr><td><code>TankDrive</code></td><td>Left, right [-1, 1]</td><td>Raw per-side</td></tr>
     <tr><td><code>ArcadeDrive</code></td><td>Throttle, turn [-1, 1]</td><td>Forward + rotate</td></tr>
-    <tr><td><code>CurvatureDrive</code></td><td>Throttle, curvature [-1, 1]</td><td>Cheesy drive (curvature-based)</td></tr>
-    <tr><td><code>FlightStyle::Rate</code></td><td>Throttle, yaw rate (deg/s)</td><td>Gyro-stabilized rate-mode flight</td></tr>
+    <tr><td><code>CurvatureDrive</code></td><td>Throttle, curvature [-1, 1]</td><td>Cheesy drive</td></tr>
+    <tr><td><code>FlightStyle::Rate</code></td><td>Throttle, yaw rate deg/s</td><td>Gyro-stabilized</td></tr>
   </table>
 
 <pre><code>// Tank drive
 chassis.opcontrol(pathfinder::TankDrive{
-    .left_axis  = pathfinder::JoystickAxis::LeftY,
+    .left_axis = pathfinder::JoystickAxis::LeftY,
     .right_axis = pathfinder::JoystickAxis::RightY,
-    .expo_curve = 0.2,
-    .deadband   = 0.05,
+    .expo_curve = 0.2, .deadband = 0.05,
 }, [](auto axis) { return controller_get_analog(axis); });
 
 // Rate-mode flight
 chassis.opcontrol(pathfinder::FlightStyle::Rate{
-    .forward_axis   = pathfinder::JoystickAxis::LeftY,
-    .yaw_axis       = pathfinder::JoystickAxis::RightX,
-    .max_forward_ips = 60.0,
-    .max_yaw_dps    = 270.0,
-    .expo_forward   = 0.4,
-    .expo_yaw       = 0.3,
-    .deadband       = 0.05,
+    .forward_axis = pathfinder::JoystickAxis::LeftY,
+    .yaw_axis = pathfinder::JoystickAxis::RightX,
+    .max_forward_ips = 60.0, .max_yaw_dps = 270.0,
+    .expo_forward = 0.4, .expo_yaw = 0.3, .deadband = 0.05,
 }, [](auto axis) { return controller_get_analog(axis); }, []{ return false; });</code></pre>
 </section>
 
-</div>
+</main>
 </body>
 </html>
